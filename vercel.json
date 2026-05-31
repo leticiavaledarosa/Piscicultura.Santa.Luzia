@@ -1,15 +1,13 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "AquaLuzia.html",
-      "use": "@vercel/static"
-    }
-  ],
   "routes": [
     {
+      "src": "/api/foto",
+      "dest": "/api/foto.js"
+    },
+    {
       "src": "/(.*)",
-      "dest": "/AquaLuzia.html"
+      "dest": "/index.html"
     }
   ]
 }
