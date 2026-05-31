@@ -61,7 +61,7 @@ body{font-family:var(--body);color:var(--cream);-webkit-font-smoothing:antialias
 .online-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(52,211,153,.16);color:var(--ok);font-size:10px;font-weight:700;padding:3px 8px;border-radius:999px;border:1px solid rgba(52,211,153,.32);}
 
 /* SCROLL */
-.content{flex:1 1 auto;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-bottom:90px;}
+.content{flex:1 1 auto;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-bottom:120px;}
 .content::-webkit-scrollbar{width:0;}
 .pad{padding:10px 20px 32px;}
 
@@ -95,6 +95,7 @@ body{font-family:var(--body);color:var(--cream);-webkit-font-smoothing:antialias
 .field{margin-bottom:14px;}
 .input{width:100%;min-height:54px;background:var(--bg-deep);border:1.5px solid var(--line);border-radius:14px;color:var(--cream);font-family:var(--body);font-size:18px;font-weight:600;padding:0 16px;outline:none;transition:border-color .15s;}
 .input::placeholder{color:#5a7a6a;font-weight:500;}
+select.input{appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%239DB0A4' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:36px;}
 .input:focus{border-color:var(--aqua);}
 .input-suffix{position:relative;}
 .input-suffix .suf{position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:14px;font-weight:700;pointer-events:none;}
@@ -346,12 +347,8 @@ function instalarApp(){
   <!-- ==================== TELA 1: SPLASH ==================== -->
   <div class="view active" id="v-splash">
     <div class="statusbar">
-      <span class="clock" data-clock>00:00</span>
       <span id="status-badge" class="offline-badge"><span class="dot"></span>OFFLINE</span>
-      <span class="sysic">
-        <svg class="ic" style="width:16px;height:16px"><use href="#i-signal"/></svg>
-        <svg class="ic" style="width:16px;height:16px"><use href="#i-battery"/></svg>
-      </span>
+      
     </div>
     <div class="content">
       <div class="pad" style="display:flex;flex-direction:column;align-items:center;text-align:center;padding-top:30px;min-height:calc(100vh - 120px);justify-content:space-between;">
@@ -397,12 +394,8 @@ function instalarApp(){
   <!-- ==================== TELA 2: DASHBOARD ==================== -->
   <div class="view hidden" id="v-dashboard">
     <div class="statusbar">
-      <span class="clock" data-clock>00:00</span>
       <span class="offline-badge" id="dash-badge"><span class="dot"></span>OFFLINE</span>
-      <span class="sysic">
-        <svg class="ic" style="width:16px;height:16px"><use href="#i-signal"/></svg>
-        <svg class="ic" style="width:16px;height:16px"><use href="#i-battery"/></svg>
-      </span>
+      
     </div>
     <div class="content">
       <div class="pad" style="padding-top:12px;">
@@ -445,9 +438,8 @@ function instalarApp(){
   <!-- ==================== TELA 3: MAPA DE GAIOLAS ==================== -->
   <div class="view hidden" id="v-gaiolas">
     <div class="statusbar">
-      <span class="clock" data-clock>00:00</span>
       <span class="offline-badge"><span class="dot"></span>OFFLINE</span>
-      <span class="sysic"><svg class="ic" style="width:16px;height:16px"><use href="#i-signal"/></svg><svg class="ic" style="width:16px;height:16px"><use href="#i-battery"/></svg></span>
+      
     </div>
     <div class="hdr">
       <div class="hdr-top">
@@ -491,9 +483,8 @@ function instalarApp(){
   <!-- ==================== TELA 4: GAIOLA INDIVIDUAL ==================== -->
   <div class="view hidden" id="v-gaiola">
     <div class="statusbar">
-      <span class="clock" data-clock>00:00</span>
       <span class="offline-badge"><span class="dot"></span>OFFLINE</span>
-      <span class="sysic"><svg class="ic" style="width:16px;height:16px"><use href="#i-signal"/></svg><svg class="ic" style="width:16px;height:16px"><use href="#i-battery"/></svg></span>
+      
     </div>
     <div class="hdr">
       <div class="hdr-top">
@@ -515,8 +506,24 @@ function instalarApp(){
         <div class="card field" style="margin-bottom:12px;">
           <div class="label"><svg class="ic ic-sm"><use href="#i-users"/></svg>Tratadores (2)</div>
           <div class="row2">
-            <input class="input" id="g-trat1" placeholder="Tratador 1" style="font-size:16px;"/>
-            <input class="input" id="g-trat2" placeholder="Tratador 2" style="font-size:16px;"/>
+            <select class="input" id="g-trat1" style="font-size:15px;">
+              <option value="">Selecione...</option>
+              <option value="Leticia">Leticia</option>
+              <option value="Kadu">Kadu</option>
+              <option value="Dorival">Dorival</option>
+              <option value="Elisangela">Elisangela</option>
+              <option value="Agnaldo">Agnaldo</option>
+              <option value="Choo">Choo</option>
+            </select>
+            <select class="input" id="g-trat2" style="font-size:15px;">
+              <option value="">Selecione...</option>
+              <option value="Leticia">Leticia</option>
+              <option value="Kadu">Kadu</option>
+              <option value="Dorival">Dorival</option>
+              <option value="Elisangela">Elisangela</option>
+              <option value="Agnaldo">Agnaldo</option>
+              <option value="Choo">Choo</option>
+            </select>
           </div>
         </div>
 
@@ -571,25 +578,29 @@ function instalarApp(){
           </div>
         </div>
 
-        <!-- Mortes e Temperatura -->
-        <div class="row2" style="margin-bottom:12px;">
-          <div class="card field" style="margin-bottom:0;">
-            <div class="label"><svg class="ic ic-sm"><use href="#i-skull"/></svg>Mortes</div>
-            <input class="input num" id="g-mortes" inputmode="numeric" placeholder="0" value="0"/>
-          </div>
-          <div class="card field" style="margin-bottom:0;">
-            <div class="label"><svg class="ic ic-sm"><use href="#i-thermo"/></svg>Temp. água</div>
-            <div class="input-suffix">
-              <input class="input num" id="g-temp" inputmode="decimal" placeholder="24.0"/>
-              <span class="suf">°C</span>
-            </div>
-          </div>
+        <!-- Mortes -->
+        <div class="card field" style="margin-bottom:12px;">
+          <div class="label"><svg class="ic ic-sm"><use href="#i-skull"/></svg>Mortes hoje</div>
+          <input class="input num" id="g-mortes" inputmode="numeric" placeholder="0" value="0" style="font-size:24px;font-weight:800;"/>
         </div>
 
         <!-- Causa da Morte -->
         <div class="card field" style="margin-bottom:12px;" id="causa-morte-wrap">
-          <div class="label">Causa da mortalidade</div>
-          <input class="input" id="g-causa" placeholder="Ex: manuseio, doença, predador..." style="font-size:15px;"/>
+          <div class="label"><svg class="ic ic-sm"><use href="#i-skull"/></svg>Causa da mortalidade</div>
+          <div class="pills" id="causa-pills" style="margin-bottom:10px;">
+            <button class="pill" data-causa="Manuseio">🤲 Manuseio</button>
+            <button class="pill" data-causa="Doença">🦠 Doença</button>
+            <button class="pill" data-causa="Predador">🦅 Predador</button>
+            <button class="pill" data-causa="Falta de OD">💧 Falta de OD</button>
+            <button class="pill" data-causa="Temperatura">🌡️ Temperatura</button>
+            <button class="pill" data-causa="Briga">⚔️ Briga</button>
+            <button class="pill" data-causa="Não sei">🤷 Não sei</button>
+            <button class="pill" data-causa="Outro">✏️ Outro</button>
+          </div>
+          <div id="causa-outro-wrap" style="display:none;">
+            <input class="input" id="g-causa" placeholder="Descreva a causa..." style="font-size:15px;"/>
+          </div>
+          <input type="hidden" id="g-causa-sel" value=""/>
         </div>
 
         <!-- Comportamento -->
@@ -639,9 +650,8 @@ function instalarApp(){
   <!-- ==================== TELA 5: HÍDRICO ==================== -->
   <div class="view hidden" id="v-hidrico">
     <div class="statusbar">
-      <span class="clock" data-clock>00:00</span>
       <span class="offline-badge"><span class="dot"></span>OFFLINE</span>
-      <span class="sysic"><svg class="ic" style="width:16px;height:16px"><use href="#i-signal"/></svg><svg class="ic" style="width:16px;height:16px"><use href="#i-battery"/></svg></span>
+      
     </div>
     <div class="hdr">
       <div class="hdr-top">
@@ -666,9 +676,8 @@ function instalarApp(){
   <!-- ==================== TELA 6: BIOMETRIA ==================== -->
   <div class="view hidden" id="v-biometria">
     <div class="statusbar">
-      <span class="clock" data-clock>00:00</span>
       <span class="offline-badge"><span class="dot"></span>OFFLINE</span>
-      <span class="sysic"><svg class="ic" style="width:16px;height:16px"><use href="#i-signal"/></svg><svg class="ic" style="width:16px;height:16px"><use href="#i-battery"/></svg></span>
+      
     </div>
     <div class="hdr">
       <div class="hdr-top">
@@ -764,9 +773,8 @@ function instalarApp(){
   <!-- ==================== TELA 7: CALCULADORA CA ==================== -->
   <div class="view hidden" id="v-ca">
     <div class="statusbar">
-      <span class="clock" data-clock>00:00</span>
       <span class="offline-badge"><span class="dot"></span>OFFLINE</span>
-      <span class="sysic"><svg class="ic" style="width:16px;height:16px"><use href="#i-signal"/></svg><svg class="ic" style="width:16px;height:16px"><use href="#i-battery"/></svg></span>
+      
     </div>
     <div class="hdr">
       <div class="hdr-top">
@@ -810,9 +818,8 @@ function instalarApp(){
   <!-- ==================== TELA 8: RELATÓRIO ==================== -->
   <div class="view hidden" id="v-relatorio">
     <div class="statusbar">
-      <span class="clock" data-clock>00:00</span>
       <span class="offline-badge"><span class="dot"></span>OFFLINE</span>
-      <span class="sysic"><svg class="ic" style="width:16px;height:16px"><use href="#i-signal"/></svg><svg class="ic" style="width:16px;height:16px"><use href="#i-battery"/></svg></span>
+      
     </div>
     <div class="hdr">
       <div class="hdr-top">
@@ -1159,15 +1166,15 @@ async function salvarGaiola(){
     setor: getSector(currentCageId),
     data: dateKey(),
     hora: nowTime(),
-    trat1: document.getElementById('g-trat1').value,
-    trat2: document.getElementById('g-trat2').value,
+    trat1: document.getElementById('g-trat1').value || '',  // select
+    trat2: document.getElementById('g-trat2').value || '',  // select
     racao_tipo,
     racao_outro: document.getElementById('g-racao-outro').value,
     kg: parseFloat(document.getElementById('g-kg').value) || 0,
     gps: document.getElementById('g-gps').value,
     consumo: consumo_btn ? consumo_btn.dataset.val : 'total',
     mortes: parseInt(document.getElementById('g-mortes').value) || 0,
-    causa_morte: document.getElementById('g-causa').value,
+    causa_morte: document.getElementById('g-causa-sel').value || document.getElementById('g-causa')?.value || '',
     temp_agua: parseFloat(document.getElementById('g-temp').value) || 0,
     comportamento: comp_btn ? comp_btn.dataset.val : 'normal',
     obs: document.getElementById('g-obs').value,
@@ -1247,13 +1254,22 @@ function openCage(id){
     sema.innerHTML = '<span class="d"></span>Pendente';
   }
   // fill fields
-  document.getElementById('g-trat1').value = data.trat1 || '';
-  document.getElementById('g-trat2').value = data.trat2 || '';
+  const sel1 = document.getElementById('g-trat1');
+  if(sel1){ [...sel1.options].forEach(o => o.selected = o.value === (data.trat1||'')); }
+  const sel2 = document.getElementById('g-trat2');
+  if(sel2){ [...sel2.options].forEach(o => o.selected = o.value === (data.trat2||'')); }
   document.getElementById('g-kg').value = data.kg || '';
   document.getElementById('g-hora').value = data.hora || (nowTime() + ' (auto)');
   document.getElementById('g-gps').value = data.gps || '';
   document.getElementById('g-mortes').value = data.mortes || 0;
-  document.getElementById('g-causa').value = data.causa_morte || '';
+  // Causa da morte — pills
+  document.querySelectorAll('#causa-pills .pill').forEach(p => {
+    p.classList.toggle('sel', p.dataset.causa === data.causa_morte);
+  });
+  document.getElementById('g-causa-sel').value = data.causa_morte || '';
+  const isOutro = data.causa_morte && !['Manuseio','Doença','Predador','Falta de OD','Temperatura','Briga','Não sei'].includes(data.causa_morte);
+  document.getElementById('causa-outro-wrap').style.display = isOutro ? 'block' : 'none';
+  if(isOutro && document.getElementById('g-causa')) document.getElementById('g-causa').value = data.causa_morte || '';
   document.getElementById('g-temp').value = data.temp_agua || '';
   document.getElementById('g-obs').value = data.obs || '';
   // pills
@@ -1307,7 +1323,18 @@ function setSegValue(id, val){
 }
 
 document.addEventListener('click', e => {
-  // pills
+  // pills causa morte
+  const causaPill = e.target.closest('#causa-pills .pill');
+  if(causaPill){
+    document.querySelectorAll('#causa-pills .pill').forEach(p => p.classList.remove('sel'));
+    causaPill.classList.add('sel');
+    const causa = causaPill.dataset.causa;
+    document.getElementById('g-causa-sel').value = causa;
+    const outroWrap = document.getElementById('causa-outro-wrap');
+    outroWrap.style.display = causa === 'Outro' ? 'block' : 'none';
+    if(causa !== 'Outro' && document.getElementById('g-causa')) document.getElementById('g-causa').value = '';
+  }
+  // pills ração
   const pill = e.target.closest('#racao-pills .pill');
   if(pill){
     document.querySelectorAll('#racao-pills .pill').forEach(p => p.classList.remove('sel'));
