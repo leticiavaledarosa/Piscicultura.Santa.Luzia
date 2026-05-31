@@ -1175,7 +1175,7 @@ async function salvarGaiola(){
     consumo: consumo_btn ? consumo_btn.dataset.val : 'total',
     mortes: parseInt(document.getElementById('g-mortes').value) || 0,
     causa_morte: document.getElementById('g-causa-sel').value || document.getElementById('g-causa')?.value || '',
-    temp_agua: parseFloat(document.getElementById('g-temp').value) || 0,
+    temp_agua: 0,
     comportamento: comp_btn ? comp_btn.dataset.val : 'normal',
     obs: document.getElementById('g-obs').value,
     foto: document.getElementById('photo-preview').src || '',
