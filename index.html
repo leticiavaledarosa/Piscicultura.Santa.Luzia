@@ -1228,7 +1228,7 @@ function updateNet(){
   });
   if(on) syncQueue();
 }
-window.addEventListener('online', updateNet);
+window.addEventListener('online', () => { updateNet(); syncFotosQueue(); });
 window.addEventListener('offline', updateNet);
 updateNet();
 
@@ -1294,6 +1294,12 @@ function captureGPS(id){
 // ============================================================
 let climaAtual = null;
 
+// Carrega último clima do cache
+try { 
+  const cc = localStorage.getItem('clima_cache');
+  if(cc) climaAtual = JSON.parse(cc);
+} catch(e){}
+
 function mapEmoji(main){ return {Clear:'☀️',Clouds:'☁️',Rain:'🌧️',Drizzle:'🌦️',Thunderstorm:'⛈️',Snow:'❄️',Mist:'🌫️',Fog:'🌫️',Haze:'🌫️'}[main]||'🌤️'; }
 function mapCond(main){ return {Clear:'Céu limpo',Clouds:'Nublado',Rain:'Chuva fraca',Drizzle:'Garoa',Thunderstorm:'Chuva forte',Mist:'Névoa/Neblina',Fog:'Névoa/Neblina'}[main]||'Céu limpo'; }
 
@@ -1317,6 +1323,7 @@ async function buscarClima(){
         emoji: mapEmoji(d.weather[0].main)
       };
       atualizarClimaUI();
+      try { localStorage.setItem('clima_cache', JSON.stringify(climaAtual)); } catch(e){}
     } catch(e){ setClimaDefault(); }
   }, ()=>setClimaDefault(), {timeout:8000});
 }
@@ -1735,7 +1742,7 @@ async function salvarHidrico(){
   const rec = {
     data: dateKey(), hora: nowTime(),
     clima: document.getElementById('h-clima-sel').value,
-    temp_ar: climaAtual?climaAtual.temp:'',
+    temp_ar: climaAtual ? climaAtual.temp : '',
     resp: document.getElementById('h-resp').value,
     pontos: [1,2,3].map(pid => {
       const r = {ponto:pid};
@@ -2047,62 +2054,110 @@ async function criarPastaDrive(nomePasta, token){
 
 async function uploadFoto(b64, nome, cageId){
   toast('Foto salva! ✅');
-  if(!navigator.onLine) return;
-  // Roda em background — não trava o app
+  if(!navigator.onLine){
+    // Salva na fila para enviar quando conectar
+    try {
+      await dbAdd('fotos_q', {b64, nome, cageId, data: dateKey(), ts: Date.now()});
+      toast('Offline — foto na fila! ✅');
+    } catch(e){ toast('Foto salva no celular'); }
+    return;
+  }
+  
   setTimeout(async () => {
-  try {
-    toast('Enviando foto...');
-    const token = await getDriveToken();
-    
-    // Cria subpasta com data
-    const pastaDataId = await criarPastaDrive(dateKey(), token);
-    
-    // Converte base64 para blob
-    const base64Data = b64.split(',')[1];
-    const byteChars = atob(base64Data);
-    const byteArr = new Uint8Array(byteChars.length);
-    for(let i=0; i<byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
-    const blob = new Blob([byteArr], {type: 'image/jpeg'});
-    
-    // Upload multipart
-    const metadata = { name: nome, parents: [pastaDataId] };
-    const form = new FormData();
-    form.append('metadata', new Blob([JSON.stringify(metadata)], {type: 'application/json'}));
-    form.append('file', blob);
-    
-    const upload = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink', {
-      method: 'POST',
-      headers: { Authorization: 'Bearer ' + token },
-      body: form
-    });
-    const uploadData = await upload.json();
-    
-    if(uploadData.id){
-      // Torna público
-      await fetch(`https://www.googleapis.com/drive/v3/files/${uploadData.id}/permissions`, {
+    try {
+      toast('Obtendo acesso ao Drive...');
+      const token = await getDriveToken();
+      if(!token){ toast('Erro de autenticação', true); return; }
+      
+      toast('Criando pasta...');
+      const pastaDataId = await criarPastaDrive(dateKey(), token);
+      if(!pastaDataId){ toast('Erro ao criar pasta', true); return; }
+      
+      toast('Enviando foto...');
+      // Converte base64 para blob
+      const base64Data = b64.includes(',') ? b64.split(',')[1] : b64;
+      const byteChars = atob(base64Data);
+      const byteArr = new Uint8Array(byteChars.length);
+      for(let i=0; i<byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
+      const blob = new Blob([byteArr], {type: 'image/jpeg'});
+      
+      // Passo 1: Cria o arquivo com metadata
+      const metaResp = await fetch('https://www.googleapis.com/drive/v3/files', {
         method: 'POST',
-        headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role: 'reader', type: 'anyone' })
+        headers: {
+          Authorization: 'Bearer ' + token,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ name: nome, parents: [pastaDataId] })
       });
       
-      // Salva link no Sheets via webhook
-      const linkFoto = uploadData.webViewLink;
-      const payloadFoto = {
-        chave: CHAVE,
-        tipo: 'foto',
-        data: { data: dateKey(), cage_id: cageId, nome, link: linkFoto, pasta: dateKey() }
-      };
-      const dados = encodeURIComponent(JSON.stringify(payloadFoto));
-      const img = new Image();
-      img.src = WEBHOOK + '?payload=' + dados;
+      if(!metaResp.ok){
+        const errText = await metaResp.text();
+        console.error('Criar arquivo erro:', metaResp.status, errText);
+        toast('Erro ao criar arquivo: ' + metaResp.status, true);
+        return;
+      }
       
-      toast('Foto no Drive! 📷✅');
+      const metaData = await metaResp.json();
+      console.log('Arquivo criado:', metaData.id);
+      
+      // Passo 2: Faz upload do conteúdo
+      const uploadResp = await fetch(
+        `https://www.googleapis.com/upload/drive/v3/files/${metaData.id}?uploadType=media`,
+        {
+          method: 'PATCH',
+          headers: {
+            Authorization: 'Bearer ' + token,
+            'Content-Type': 'image/jpeg'
+          },
+          body: blob
+        }
+      );
+      
+      if(!uploadResp.ok){
+        const errText = await uploadResp.text();
+        console.error('Upload conteúdo erro:', uploadResp.status, errText);
+        toast('Erro no upload: ' + uploadResp.status, true);
+        return;
+      }
+      
+      const uploadData = await uploadResp.json();
+      uploadData.id = metaData.id;
+      console.log('Upload OK:', uploadData);
+      
+      if(uploadData.id){
+        // Torna público para visualização
+        await fetch(
+          `https://www.googleapis.com/drive/v3/files/${uploadData.id}/permissions`,
+          {
+            method: 'POST',
+            headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ role: 'reader', type: 'anyone' })
+          }
+        );
+        
+        // Salva link na planilha
+        const linkFoto = uploadData.webViewLink || `https://drive.google.com/file/d/${uploadData.id}/view`;
+        const payloadFoto = {
+          chave: CHAVE,
+          tipo: 'foto',
+          data: { data: dateKey(), cage_id: cageId, nome, link: linkFoto }
+        };
+        const dados = encodeURIComponent(JSON.stringify(payloadFoto));
+        const img = new Image();
+        img.src = WEBHOOK + '?payload=' + dados;
+        
+        toast('Foto no Drive! 📷✅');
+        console.log('Foto enviada:', linkFoto);
+      } else {
+        console.error('Upload sem ID:', uploadData);
+        toast('Erro no upload', true);
+      }
+    } catch(err){
+      console.error('uploadFoto erro:', err);
+      toast('Erro: ' + err.message, true);
     }
-  } catch(err){
-    console.error('Upload foto erro:', err);
-    toast('Foto salva localmente');
-  }
-  }, 100); // fim setTimeout
+  }, 200);
 }
 
 // ============================================================
@@ -2371,6 +2426,49 @@ async function atualizarRacaoLote(cageId, kg){
   await dbPut('lotes', lote);
 }
 
+// ===================== SYNC FILA DE FOTOS =====================
+async function syncFotosQueue(){
+  if(!navigator.onLine || !db) return;
+  try {
+    const queue = await dbGetAll('fotos_q');
+    if(!queue.length) return;
+    toast('Enviando ' + queue.length + ' foto(s) pendente(s)...');
+    for(const item of queue){
+      try {
+        const token = await getDriveToken();
+        if(!token) break;
+        const pastaDataId = await criarPastaDrive(item.data, token);
+        const base64Data = item.b64.includes(',') ? item.b64.split(',')[1] : item.b64;
+        const byteChars = atob(base64Data);
+        const byteArr = new Uint8Array(byteChars.length);
+        for(let i=0; i<byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
+        const blob = new Blob([byteArr], {type: 'image/jpeg'});
+        const metaResp = await fetch('https://www.googleapis.com/drive/v3/files', {
+          method: 'POST',
+          headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: item.nome, parents: [pastaDataId] })
+        });
+        if(!metaResp.ok) continue;
+        const metaData = await metaResp.json();
+        await fetch(`https://www.googleapis.com/upload/drive/v3/files/${metaData.id}?uploadType=media`, {
+          method: 'PATCH',
+          headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'image/jpeg' },
+          body: blob
+        });
+        // Remove da fila
+        const tx = db.transaction('fotos_q','readwrite');
+        tx.objectStore('fotos_q').delete(item.id);
+        // Registra no Sheets
+        const linkFoto = `https://drive.google.com/file/d/${metaData.id}/view`;
+        const pf = { chave:CHAVE, tipo:'foto', data:{ data:item.data, cage_id:item.cageId, nome:item.nome, link:linkFoto } };
+        const img = new Image();
+        img.src = WEBHOOK + '?payload=' + encodeURIComponent(JSON.stringify(pf));
+      } catch(e){ console.error('syncFoto erro:', e); }
+    }
+    toast('Fotos sincronizadas! 📷✅');
+  } catch(e){ console.error('syncFotosQueue:', e); }
+}
+
 // ============================================================
 // INIT
 // ============================================================
@@ -2384,6 +2482,8 @@ async function init(){
   agendarReset();
   setTimeout(buscarClima, 2000);
   setInterval(buscarClima, 15*60*1000);
+  // Sincroniza fotos pendentes se online
+  if(navigator.onLine) setTimeout(syncFotosQueue, 3000);
 }
 
 init();
