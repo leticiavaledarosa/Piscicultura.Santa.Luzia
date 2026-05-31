@@ -1600,6 +1600,13 @@ async function salvarArracamento(){
   document.getElementById('g-mortes').value='0';
   document.getElementById('g-obs').value='';
   document.getElementById('g-hora').value = nowTime()+' (auto)';
+  // Reseta foto para próximo arraçoamento
+  const prev = document.getElementById('g-photo-prev');
+  const ph = document.getElementById('g-photo-ph');
+  const fotoInput = document.getElementById('g-foto-input');
+  if(prev){ prev.src=''; prev.style.display='none'; }
+  if(ph) ph.style.display='flex';
+  if(fotoInput) fotoInput.value='';
   renderArrHistorico(curCage);
   updateCageProg();
   updateDash();
@@ -2041,8 +2048,10 @@ async function criarPastaDrive(nomePasta, token){
 async function uploadFoto(b64, nome, cageId){
   toast('Foto salva! ✅');
   if(!navigator.onLine) return;
+  // Roda em background — não trava o app
+  setTimeout(async () => {
   try {
-    toast('Enviando foto pro Drive...');
+    toast('Enviando foto...');
     const token = await getDriveToken();
     
     // Cria subpasta com data
@@ -2093,6 +2102,7 @@ async function uploadFoto(b64, nome, cageId){
     console.error('Upload foto erro:', err);
     toast('Foto salva localmente');
   }
+  }, 100); // fim setTimeout
 }
 
 // ============================================================
