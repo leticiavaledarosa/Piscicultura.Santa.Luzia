@@ -1191,7 +1191,7 @@ async function salvarGaiola(){
 }
 
 function updateCageDot(id){
-  const el = document.querySelector(`.cage[data-id="${id}"]`);
+  const el = document.querySelector(`[data-cage-id="${id}"]`);
   if(el){
     el.className = 'cage ' + getCageStatus(id);
     el.classList.add('sel');
@@ -1210,13 +1210,22 @@ function renderCageMap(){
     html += '<div class="grid-cages">';
     for(let i=a;i<=b;i++){
       const st = getCageStatus(i);
-      html += `<div class="cage ${st}" data-id="${i}" onclick="openCage(${i})">${String(i).padStart(3,'0')}</div>`;
+      html += `<div class="cage ${st}" data-cage-id="${i}">${String(i).padStart(3,'0')}</div>`;
     }
     html += '</div>';
   }
   container.innerHTML = html;
   updateCageProgress();
 }
+
+// Event delegation para gaiolas — funciona mesmo após re-render
+document.addEventListener('click', function(e){
+  const cage = e.target.closest('[data-cage-id]');
+  if(cage){
+    const id = parseInt(cage.dataset.cageId);
+    if(id) openCage(id);
+  }
+});
 
 function updateCageProgress(){
   const done = Object.keys(gaiolas).length;
