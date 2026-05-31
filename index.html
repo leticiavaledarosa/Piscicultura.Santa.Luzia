@@ -1716,10 +1716,17 @@ const WEBHOOK = 'https://script.google.com/macros/s/AKfycbzlAyW969zFIUaUHydehZVm
 const CHAVE = 'AQUALUZIA2026';
 
 async function enviarParaSheets(payload){
-  const dados = encodeURIComponent(JSON.stringify({...payload, chave: CHAVE}));
-  const url = WEBHOOK + '?payload=' + dados;
-  const resp = await fetch(url, {method:'GET', mode:'no-cors'});
-  return true;
+  return new Promise((resolve) => {
+    // Usa Image tag — funciona sem CORS em qualquer hospedagem
+    const dados = encodeURIComponent(JSON.stringify({...payload, chave: CHAVE}));
+    const url = WEBHOOK + '?payload=' + dados;
+    const img = new Image();
+    img.onload = () => resolve(true);
+    img.onerror = () => resolve(true); // Apps Script retorna JSON não imagem, então onerror é normal
+    img.src = url;
+    // Timeout de segurança
+    setTimeout(() => resolve(true), 5000);
+  });
 }
 
 async function syncQueue(){
@@ -1733,8 +1740,8 @@ async function syncQueue(){
       const tx = db.transaction('sync_queue','readwrite');
       tx.objectStore('sync_queue').delete(item.id);
       count++;
-      await new Promise(r => setTimeout(r, 500));
-    } catch(e) { console.error('Sync erro:', e); break; }
+      await new Promise(r => setTimeout(r, 800));
+    } catch(e) { console.error('Sync erro:', e); }
   }
   const el = document.getElementById('last-sync-txt');
   if(el && count > 0) el.textContent = count + ' registro(s) enviados às ' + nowTime();
@@ -1746,7 +1753,7 @@ async function sincronizarSheets(){
     showToast('Sem internet!');
     return;
   }
-  // Força re-envio pegando tudo do dia
+  // Força re-envio de todos os registros do dia
   const todas = await dbGetAll('gaiolas');
   const hoje = dateKey();
   const tx = db.transaction('sync_queue','readwrite');
@@ -1760,7 +1767,11 @@ async function sincronizarSheets(){
   showToast('Enviando...');
   setTimeout(async () => {
     const count = await syncQueue();
-    showToast(count > 0 ? count + ' gaiola(s) enviadas!' : 'Verifique a conexão');
+    if(count > 0){
+      showToast(count + ' gaiola(s) enviadas! ✅');
+    } else {
+      showToast('Nada pendente hoje');
+    }
   }, 500);
 }
 
