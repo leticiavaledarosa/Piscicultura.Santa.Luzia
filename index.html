@@ -1572,11 +1572,13 @@ async function salvarArracamento(){
     const outro = document.getElementById('g-racao-outro').value.trim();
     if(!outro){ toast('Especifique o tipo de ração', true); return; }
   }
+  const arrNum = getCageArrCount(curCage) + 1;
   const rec = {
     cage_id: curCage,
     setor: getSector(curCage),
     data: dateKey(),
     hora: nowTime(),
+    arr_num: arrNum,
     clima: document.getElementById('g-clima-sel').value,
     temp_ar: climaAtual ? climaAtual.temp : '',
     fase: document.getElementById('g-fase').value,
