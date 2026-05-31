@@ -145,6 +145,7 @@ body{font-family:var(--body);color:var(--cream);-webkit-font-smoothing:antialias
 .bio-peso-tag{background:var(--surf);border:1px solid var(--line);border-radius:8px;padding:4px 10px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:5px;}
 .bio-peso-tag .x{color:var(--bad);font-size:10px;}
 </style>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
 <div id="app">
@@ -347,6 +348,11 @@ body{font-family:var(--body);color:var(--cream);-webkit-font-smoothing:antialias
     </div>
     <!-- Arraçoamentos do dia -->
     <div id="g-arr-resumo" style="font-size:11px;color:var(--muted);margin-top:2px;"></div>
+    <div id="g-lote-btn-wrap" style="margin-top:6px;display:none;">
+      <button onclick="abrirCadastroLote(curCage)" style="background:rgba(251,191,36,.14);border:1px solid rgba(251,191,36,.3);color:var(--warn);padding:5px 12px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;">
+        ⚠️ Sem lote cadastrado — toque para cadastrar
+      </button>
+    </div>
   </div>
   <div class="content">
     <div class="pad" style="padding-top:10px;">
@@ -757,7 +763,7 @@ body{font-family:var(--body);color:var(--cream);-webkit-font-smoothing:antialias
     </div>
   </div>
   <!-- ETAPA 2 -->
-  <div class="content" id="bio-e2" style="display:none;">
+  <div class="content" id="bio-e2" style="display:none;overflow-y:auto;">
     <div class="pad" style="padding-top:10px;">
       <p class="eyebrow" style="margin-bottom:14px;">Etapa 2 — Coleta de amostras</p>
       <div class="card2" style="margin-bottom:12px;">
@@ -855,7 +861,7 @@ body{font-family:var(--body);color:var(--cream);-webkit-font-smoothing:antialias
     </div>
   </div>
   <!-- ETAPA 3 -->
-  <div class="content" id="bio-e3" style="display:none;">
+  <div class="content" id="bio-e3" style="display:none;overflow-y:auto;">
     <div class="pad" style="padding-top:10px;">
       <p class="eyebrow" style="margin-bottom:14px;">Etapa 3 — Resultados</p>
       <div class="card2" style="margin-bottom:12px;">
@@ -973,6 +979,121 @@ body{font-family:var(--body);color:var(--cream);-webkit-font-smoothing:antialias
   </nav>
 </div>
 
+
+<!-- ========== TELA: CADASTRO DE LOTE ========== -->
+<div class="view" id="v-lote">
+  <div class="sb"><span class="badge-off"><span class="dot"></span>OFFLINE</span></div>
+  <div class="hdr">
+    <div class="hdr-top">
+      <div class="back" onclick="navTo('v-gaiolas')"><svg style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2"><use href="#ic-left"/></svg></div>
+      <div style="flex:1;">
+        <p class="muted" style="font-size:11px;">Cadastro de lote</p>
+        <h1 class="h1" style="font-size:22px;">Gaiola <span id="lote-g-num">001</span></h1>
+      </div>
+      <span class="tag">Novo lote</span>
+    </div>
+  </div>
+  <div class="content">
+    <div class="pad" style="padding-top:10px;">
+      
+      <!-- Info -->
+      <div style="background:rgba(45,212,191,.08);border:1px solid rgba(45,212,191,.2);border-radius:12px;padding:12px 14px;margin-bottom:16px;">
+        <p style="font-size:13px;color:var(--aqua);margin:0;">📋 Preencha uma vez só quando os alevinos entrarem na gaiola. O app usa esses dados em todos os cálculos.</p>
+      </div>
+
+      <!-- Data de entrada -->
+      <div class="field">
+        <div class="label">📅 Data de entrada dos alevinos</div>
+        <input class="inp" id="lote-c-data" type="date" style="font-size:16px;"/>
+      </div>
+
+      <!-- Quantidade -->
+      <div class="field">
+        <div class="label">🐟 Quantidade de alevinos</div>
+        <div class="inp-suf">
+          <input class="inp" id="lote-c-qtd" inputmode="numeric" placeholder="Ex: 9000" style="font-size:20px;font-weight:800;"/>
+          <span class="suf">peixes</span>
+        </div>
+      </div>
+
+      <!-- Peso inicial -->
+      <div class="field">
+        <div class="label">⚖️ Peso inicial médio</div>
+        <div class="inp-suf">
+          <input class="inp" id="lote-c-peso" inputmode="decimal" placeholder="Ex: 22" style="font-size:20px;font-weight:800;"/>
+          <span class="suf">g</span>
+        </div>
+      </div>
+
+      <!-- Fase inicial -->
+      <div class="field">
+        <div class="label">🥚 Fase inicial</div>
+        <select class="sel" id="lote-c-fase">
+          <option value="">Selecione...</option>
+          <option value="Alevinagem">🥚 Alevinagem (1g–50g)</option>
+          <option value="Recria">🐟 Recria (50g–200g)</option>
+          <option value="Engorda 1">🐠 Engorda 1 (200g–400g)</option>
+          <option value="Engorda 2">🐡 Engorda 2 (400g–600g)</option>
+          <option value="Terminação">🎣 Terminação (600g+)</option>
+        </select>
+      </div>
+
+      <!-- Fornecedor -->
+      <div class="field">
+        <div class="label">🏭 Fornecedor dos alevinos</div>
+        <input class="inp" id="lote-c-fornecedor" placeholder="Nome do fornecedor..." style="font-size:16px;"/>
+      </div>
+
+      <!-- Origem -->
+      <div class="field">
+        <div class="label">🗺️ Origem</div>
+        <select class="sel" id="lote-c-origem">
+          <option value="">Selecione...</option>
+          <option value="GIFT">🧬 Tilápia GIFT</option>
+          <option value="Supreme">Supreme</option>
+          <option value="Chitralada">Chitralada</option>
+          <option value="Outro">Outro</option>
+        </select>
+      </div>
+
+      <!-- Responsável -->
+      <div class="field">
+        <div class="label">👤 Responsável pelo povoamento</div>
+        <select class="sel" id="lote-c-resp">
+          <option value="">Selecione...</option>
+          <option value="Leticia">Leticia</option>
+          <option value="Kadu">Kadu</option>
+          <option value="Dorival">Dorival</option>
+          <option value="Elisangela">Elisangela</option>
+          <option value="Agnaldo">Agnaldo</option>
+          <option value="Choo">Choo</option>
+        </select>
+      </div>
+
+      <!-- Observações -->
+      <div class="field">
+        <div class="label">📝 Observações do povoamento</div>
+        <textarea class="inp ta" id="lote-c-obs" placeholder="Qualidade dos alevinos, transporte, etc..."></textarea>
+      </div>
+
+      <button class="btn btn-a" onclick="salvarLote()">
+        <svg style="width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2"><use href="#ic-check"/></svg>
+        CADASTRAR LOTE
+      </button>
+
+      <!-- Lote ativo existente -->
+      <div id="lote-existente" style="display:none;margin-top:16px;">
+        <div class="div"></div>
+        <p class="eyebrow" style="margin-bottom:10px;">Lote ativo nesta gaiola</p>
+        <div class="card2" id="lote-existente-card"></div>
+        <button class="btn btn-g btn-sm" style="margin-top:10px;color:var(--bad);border-color:rgba(248,113,113,.3);" onclick="encerrarLote()">
+          Encerrar lote (despesca)
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL LOTE -->
 <div class="modal hidden" id="modal-lote">
   <div class="modal-sheet">
@@ -1035,9 +1156,13 @@ body{font-family:var(--body);color:var(--cream);-webkit-font-smoothing:antialias
 // ============================================================
 // CONFIG
 // ============================================================
-const WEBHOOK = 'https://script.google.com/macros/s/AKfycbzlAyW969zFIUaUHydehZVmr0yXEM6REAtnte9VBY1NcfokhHyG_6gN8BY805TgHWiV/exec';
+const WEBHOOK = 'https://script.google.com/macros/s/AKfycbxJz5QNt4NjBsiaRy9KR6dIKtVOWBYPqaWU7sZ2c659DZu0PYCJA3Lv-ZPLSW5Bvtg/exec';
 const CHAVE = 'AQUALUZIA2026';
 const OW_KEY = '2dcbc9d5a08fe7a9abbedd560a7d2261';
+const DRIVE_CLIENT_ID = '349032365119-qkj9clfmpsrrrsjbv6gc9q83cbs8al8p.apps.googleusercontent.com';
+const DRIVE_PASTA_ID = '1dCbTHQVZEL-ncLN5461kbWPJ8TP5AErq';
+let driveAccessToken = null;
+let driveTokenExpiry = 0;
 const TOTAL = 80;
 const SETORES = {A:[1,16],B:[17,32],C:[33,48],D:[49,64],E:[65,80]};
 const NOMES = ['Leticia','Kadu','Dorival','Elisangela','Agnaldo','Choo'];
@@ -1065,20 +1190,26 @@ document.querySelectorAll('[data-today-short]').forEach(el => el.textContent = t
 // ============================================================
 let db;
 const DB_NAME = 'psl_v2';
-const DB_VER = 1;
+const DB_VER = 2;
 
 function initDB(){
   return new Promise((res,rej) => {
     const req = indexedDB.open(DB_NAME, DB_VER);
     req.onupgradeneeded = e => {
       const d = e.target.result;
-      if(!d.objectStoreNames.contains('arr')) d.createObjectStore('arr',{keyPath:'id',autoIncrement:true});
-      if(!d.objectStoreNames.contains('hidrico')) d.createObjectStore('hidrico',{keyPath:'id',autoIncrement:true});
-      if(!d.objectStoreNames.contains('bio')) d.createObjectStore('bio',{keyPath:'id',autoIncrement:true});
-      if(!d.objectStoreNames.contains('sync_q')) d.createObjectStore('sync_q',{keyPath:'id',autoIncrement:true});
+      const stores = ['arr','lotes','hidrico','bio','sync_q'];
+      stores.forEach(s => {
+        if(!d.objectStoreNames.contains(s))
+          d.createObjectStore(s,{keyPath:'id',autoIncrement:true});
+      });
     };
     req.onsuccess = e => { db=e.target.result; res(db); };
-    req.onerror = rej;
+    req.onerror = e => {
+      // Se falhar, tenta deletar e recriar
+      console.error('DB erro, tentando recriar...');
+      indexedDB.deleteDatabase(DB_NAME);
+      setTimeout(() => initDB().then(res).catch(rej), 500);
+    };
   });
 }
 function dbPut(store,val){ return new Promise((res,rej) => { const tx=db.transaction(store,'readwrite'); const r=tx.objectStore(store).put(val); r.onsuccess=()=>res(r.result); r.onerror=rej; }); }
@@ -1259,7 +1390,8 @@ function getSector(id){ for(const [s,[a,b]] of Object.entries(SETORES)) if(id>=a
 
 function getCageStatus(id){
   const arr = arrDia.filter(a => a.cage_id === id);
-  if(!arr.length) return 'bad';
+  const temLote = !!getLote(id);
+  if(!arr.length) return temLote ? 'bad' : 'empty';
   if(arr.some(a => a.mortes>0 || a.consumo==='nao_comeu' || a.comportamento==='superficie')) return 'warn';
   return 'ok';
 }
@@ -1295,16 +1427,21 @@ function renderMap(){
   let html = '';
   for(const [sector,[a,b]] of Object.entries(SETORES)){
     if(sel!=='all'&&sel!==sector) continue;
-    const count = getCageArrCountRange(a,b);
-    html += `<div class="sec-title"><span>Setor ${sector}</span><span class="ln"></span><span class="muted" style="font-size:11px;">${count} arraç.</span></div>`;
+    const loteCount = Object.keys(lotes).filter(k=>parseInt(k)>=a&&parseInt(k)<=b).length;
+    const arrCount = getCageArrCountRange(a,b);
+    html += `<div class="sec-title"><span>Setor ${sector}</span><span class="ln"></span><span class="muted" style="font-size:11px;">${loteCount} lotes · ${arrCount} arraç.</span></div>`;
     html += '<div class="cage-grid">';
     for(let i=a;i<=b;i++){
       const st = getCageStatus(i);
       const cnt = getCageArrCount(i);
-      html += `<div class="cage ${st}" data-cage="${i}">${String(i).padStart(3,'0')}${cnt>1?'<br><span style="font-size:8px;">'+cnt+'x</span>':''}</div>`;
+      const temLote = !!getLote(i);
+      const extra = cnt>1?`<br><span style="font-size:8px;">${cnt}x</span>`:(temLote?'':'<br><span style="font-size:7px;">+lote</span>');
+      html += `<div class="cage ${st}" data-cage="${i}" style="${!temLote?'border-color:rgba(251,191,36,.4);':''}">${String(i).padStart(3,'0')}${extra}</div>`;
     }
     html += '</div>';
   }
+  // Legenda de lote
+  html += '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;"><span style="font-size:11px;color:var(--muted);">⚠️ Gaiola sem lote = borda amarela · toque para cadastrar</span></div>';
   wrap.innerHTML = html;
   updateCageProg();
 }
@@ -1331,7 +1468,20 @@ document.getElementById('sector-chips').addEventListener('click', e => {
 // Click nas gaiolas (event delegation)
 document.addEventListener('click', e => {
   const cage = e.target.closest('[data-cage]');
-  if(cage){ openCage(parseInt(cage.dataset.cage)); return; }
+  if(cage){
+    const id = parseInt(cage.dataset.cage);
+    // Se não tem lote, pergunta se quer cadastrar
+    if(!getLote(id)){
+      if(confirm('Gaiola '+String(id).padStart(3,'0')+' não tem lote cadastrado.\n\nCadastrar lote agora?')){
+        abrirCadastroLote(id);
+      } else {
+        openCage(id); // abre mesmo sem lote
+      }
+    } else {
+      openCage(id);
+    }
+    return;
+  }
   // Lote sector chips
   const ls = e.target.closest('[data-ls]');
   if(ls){
@@ -1407,6 +1557,7 @@ function renderArrHistorico(id){
 }
 
 async function salvarArracamento(){
+  try {
   const kg = parseFloat(document.getElementById('g-kg').value)||0;
   if(!kg){ toast('Informe a quantidade de ração', true); return; }
   const rTipo = document.getElementById('g-racao-tipo').value;
@@ -1453,7 +1604,9 @@ async function salvarArracamento(){
   updateCageProg();
   updateDash();
   toast('Arraçoamento '+getCageArrCount(curCage)+'º salvo! ✅');
+  await atualizarRacaoLote(curCage, kg);
   if(navigator.onLine) syncQueue();
+  } catch(err){ console.error('salvarArr erro:', err); toast('Erro: '+err.message, true); }
 }
 
 function navCage(dir){
@@ -1614,7 +1767,7 @@ function bioNextStep(step){
   bioStep = step;
   ['bio-e1','bio-e2','bio-e3'].forEach((id,i) => {
     const el = document.getElementById(id);
-    if(el) el.style.display = (i+1===step)?'flex':'none';
+    if(el) el.style.display = (i+1===step)?'block':'none';
   });
   ['bio-s1','bio-s2','bio-s3'].forEach((id,i) => {
     const el = document.getElementById(id);
@@ -1622,6 +1775,9 @@ function bioNextStep(step){
     el.className = 'step'+(i+1<step?' done':i+1===step?' active':'');
   });
   setText('bio-step-lbl', `Etapa ${step}/3`);
+  // Scroll para o topo
+  const activeEl = document.getElementById('bio-e'+step);
+  if(activeEl) activeEl.scrollTop = 0;
   if(step===3) calcBio();
 }
 
@@ -1717,21 +1873,35 @@ async function buscarDadosLote(val){
   const id = parseInt(val);
   if(!id||id<1||id>80||!db) return;
   try {
+    // Busca lote cadastrado
+    const lote = getLote(id);
+    
+    // Busca ração acumulada
     const all = await dbGetAll('arr');
-    const reg = all.filter(a=>a.cage_id===id);
-    const racao = reg.reduce((s,a)=>s+(parseFloat(a.kg)||0),0);
-    const bios = (await dbGetAll('bio')).filter(b=>parseInt(b.gaiola)===id).sort((a,b)=>new Date(b.data)-new Date(a.data));
-    const ult = bios[0];
-    if(racao>0){ const r=document.getElementById('lote-racao'); if(r&&!r.value) r.value=racao.toFixed(1); }
-    if(ult){
-      const setVal=(id,v)=>{const el=document.getElementById(id);if(el&&v&&!el.value)el.value=v;};
-      setVal('lote-data',ult.lote_data);
-      setVal('lote-qtd',ult.lote_qtd);
-      setVal('lote-pinicial',ult.lote_pinicial||ult.lote_pesoinicial);
+    const racao = lote ? (lote.racao_acumulada || 0) : all.filter(a=>a.cage_id===id).reduce((s,a)=>s+(parseFloat(a.kg)||0),0);
+    
+    const r = document.getElementById('lote-racao');
+    if(r) r.value = racao.toFixed(1);
+
+    if(lote){
+      const setVal=(elId,v)=>{const el=document.getElementById(elId);if(el&&v!==undefined) el.value=v;};
+      setVal('lote-data', lote.data_entrada);
+      setVal('lote-qtd', lote.qtd);
+      setVal('lote-pinicial', lote.peso_inicial);
+      
+      const dias = Math.floor((Date.now()-new Date(lote.data_entrada).getTime())/86400000);
       const info = document.getElementById('bio-lote-info');
       if(info){
         info.style.display='block';
-        info.textContent=`✅ ${bios.length} biometria(s) encontrada(s) · Ração: ${racao.toFixed(1)}kg`;
+        info.innerHTML=`✅ Lote ativo · ${lote.fase} · ${dias} dias · ${lote.qtd} peixes · Ração acum.: ${racao.toFixed(1)}kg`;
+      }
+    } else {
+      // Sem lote cadastrado — avisa
+      const info = document.getElementById('bio-lote-info');
+      if(info){
+        info.style.display='block';
+        info.style.color='var(--warn)';
+        info.innerHTML=`⚠️ Sem lote cadastrado nesta gaiola. <span style="text-decoration:underline;cursor:pointer;" onclick="abrirCadastroLote(${id})">Cadastrar agora</span>`;
       }
     }
     calcBio();
@@ -1823,13 +1993,106 @@ function handlePhotoBio(input){
   reader.readAsDataURL(file);
 }
 
+// ===================== GOOGLE DRIVE API =====================
+async function getDriveToken(){
+  // Verifica se token ainda é válido
+  if(driveAccessToken && Date.now() < driveTokenExpiry){
+    return driveAccessToken;
+  }
+  return new Promise((resolve, reject) => {
+    const client = google.accounts.oauth2.initTokenClient({
+      client_id: DRIVE_CLIENT_ID,
+      scope: 'https://www.googleapis.com/auth/drive.file',
+      callback: (resp) => {
+        if(resp.error){ reject(resp.error); return; }
+        driveAccessToken = resp.access_token;
+        driveTokenExpiry = Date.now() + (resp.expires_in * 1000) - 60000;
+        resolve(driveAccessToken);
+      }
+    });
+    client.requestAccessToken();
+  });
+}
+
+async function criarPastaDrive(nomePasta, token){
+  // Verifica se pasta já existe
+  const query = encodeURIComponent(`name='${nomePasta}' and '${DRIVE_PASTA_ID}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`);
+  const check = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}`, {
+    headers: { Authorization: 'Bearer ' + token }
+  });
+  const checkData = await check.json();
+  if(checkData.files && checkData.files.length > 0){
+    return checkData.files[0].id;
+  }
+  // Cria pasta
+  const r = await fetch('https://www.googleapis.com/drive/v3/files', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: nomePasta,
+      mimeType: 'application/vnd.google-apps.folder',
+      parents: [DRIVE_PASTA_ID]
+    })
+  });
+  const d = await r.json();
+  return d.id;
+}
+
 async function uploadFoto(b64, nome, cageId){
-  toast('Foto salva!');
+  toast('Foto salva! ✅');
   if(!navigator.onLine) return;
   try {
-    const r=await fetch('/api/foto',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({base64:b64,nome,cage_id:cageId,data:dateKey(),chave:CHAVE})});
-    if(r.ok) toast('Foto no Drive! 📷✅');
-  } catch(e){}
+    toast('Enviando foto pro Drive...');
+    const token = await getDriveToken();
+    
+    // Cria subpasta com data
+    const pastaDataId = await criarPastaDrive(dateKey(), token);
+    
+    // Converte base64 para blob
+    const base64Data = b64.split(',')[1];
+    const byteChars = atob(base64Data);
+    const byteArr = new Uint8Array(byteChars.length);
+    for(let i=0; i<byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
+    const blob = new Blob([byteArr], {type: 'image/jpeg'});
+    
+    // Upload multipart
+    const metadata = { name: nome, parents: [pastaDataId] };
+    const form = new FormData();
+    form.append('metadata', new Blob([JSON.stringify(metadata)], {type: 'application/json'}));
+    form.append('file', blob);
+    
+    const upload = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + token },
+      body: form
+    });
+    const uploadData = await upload.json();
+    
+    if(uploadData.id){
+      // Torna público
+      await fetch(`https://www.googleapis.com/drive/v3/files/${uploadData.id}/permissions`, {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: 'reader', type: 'anyone' })
+      });
+      
+      // Salva link no Sheets via webhook
+      const linkFoto = uploadData.webViewLink;
+      const payloadFoto = {
+        chave: CHAVE,
+        tipo: 'foto',
+        data: { data: dateKey(), cage_id: cageId, nome, link: linkFoto, pasta: dateKey() }
+      };
+      const dados = encodeURIComponent(JSON.stringify(payloadFoto));
+      const img = new Image();
+      img.src = WEBHOOK + '?payload=' + dados;
+      
+      toast('Foto no Drive! 📷✅');
+    }
+  } catch(err){
+    console.error('Upload foto erro:', err);
+    toast('Foto salva localmente');
+  }
 }
 
 // ============================================================
@@ -1982,12 +2245,129 @@ const mfLink=document.createElement('link');mfLink.rel='manifest';mfLink.href=mf
 let deferredPrompt;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;});
 
+
+// ============================================================
+// CADASTRO DE LOTES
+// ============================================================
+let lotes = {}; // cache de lotes por gaiola
+
+async function loadLotes(){
+  if(!db) return;
+  try {
+    const all = await dbGetAll('lotes');
+    lotes = {};
+    all.forEach(l => { if(l.status==='ativo') lotes[l.cage_id] = l; });
+  } catch(e){ console.log('loadLotes erro:', e); }
+}
+
+function getLote(cageId){ return lotes[cageId] || null; }
+
+async function abrirCadastroLote(cageId){
+  curCage = cageId;
+  setText('lote-g-num', String(cageId).padStart(3,'0'));
+  
+  // Limpa campos
+  ['lote-c-data','lote-c-qtd','lote-c-peso','lote-c-fornecedor','lote-c-obs'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.value = '';
+  });
+  ['lote-c-fase','lote-c-origem','lote-c-resp'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.selectedIndex = 0;
+  });
+
+  // Verifica se já tem lote ativo
+  const loteExist = getLote(cageId);
+  const wrap = document.getElementById('lote-existente');
+  const card = document.getElementById('lote-existente-card');
+  
+  if(loteExist && wrap && card){
+    wrap.style.display = 'block';
+    const dias = Math.floor((Date.now() - new Date(loteExist.data_entrada).getTime()) / 86400000);
+    card.innerHTML = `
+      <div class="kv"><span class="k">Data entrada</span><span class="v">${new Date(loteExist.data_entrada).toLocaleDateString('pt-BR')}</span></div>
+      <div class="kv"><span class="k">Quantidade</span><span class="v">${loteExist.qtd} peixes</span></div>
+      <div class="kv"><span class="k">Peso inicial</span><span class="v">${loteExist.peso_inicial}g</span></div>
+      <div class="kv"><span class="k">Fase inicial</span><span class="v">${loteExist.fase}</span></div>
+      <div class="kv"><span class="k">Fornecedor</span><span class="v">${loteExist.fornecedor||'—'}</span></div>
+      <div class="kv"><span class="k">Dias de ciclo</span><span class="v aq">${dias} dias</span></div>
+    `;
+  } else if(wrap){
+    wrap.style.display = 'none';
+  }
+
+  goTo('v-lote');
+}
+
+async function salvarLote(){
+  try {
+    const data = document.getElementById('lote-c-data').value;
+    const qtd = parseInt(document.getElementById('lote-c-qtd').value)||0;
+    const peso = parseFloat(document.getElementById('lote-c-peso').value)||0;
+    const fase = document.getElementById('lote-c-fase').value;
+
+    if(!data){ toast('Informe a data de entrada', true); return; }
+    if(!qtd){ toast('Informe a quantidade de alevinos', true); return; }
+    if(!peso){ toast('Informe o peso inicial', true); return; }
+    if(!fase){ toast('Selecione a fase inicial', true); return; }
+
+    const rec = {
+      cage_id: curCage,
+      setor: getSector(curCage),
+      data_entrada: data,
+      data_cadastro: dateKey(),
+      qtd,
+      peso_inicial: peso,
+      fase,
+      fornecedor: document.getElementById('lote-c-fornecedor')?.value || '',
+      origem: document.getElementById('lote-c-origem')?.value || '',
+      resp: document.getElementById('lote-c-resp')?.value || '',
+      obs: document.getElementById('lote-c-obs')?.value || '',
+      status: 'ativo',
+      racao_acumulada: 0
+    };
+
+    await dbAdd('lotes', rec);
+    lotes[curCage] = rec;
+
+    await dbAdd('sync_q', {data: rec, tipo: 'lote', ts: Date.now()});
+    if(navigator.onLine) syncQueue();
+
+    toast('Lote cadastrado! ✅');
+    setTimeout(() => navTo('v-gaiolas'), 1200);
+  } catch(err) {
+    console.error('salvarLote erro:', err);
+    toast('Erro ao salvar: ' + err.message, true);
+  }
+}
+
+async function encerrarLote(){
+  if(!confirm('Encerrar o lote desta gaiola? (despesca realizada)')) return;
+  const lote = getLote(curCage);
+  if(!lote) return;
+  lote.status = 'encerrado';
+  lote.data_encerramento = dateKey();
+  await dbPut('lotes', lote);
+  delete lotes[curCage];
+  toast('Lote encerrado!');
+  setTimeout(() => navTo('v-gaiolas'), 1200);
+}
+
+// Atualiza ração acumulada do lote quando salva arraçoamento
+async function atualizarRacaoLote(cageId, kg){
+  const lote = getLote(cageId);
+  if(!lote) return;
+  lote.racao_acumulada = (lote.racao_acumulada || 0) + parseFloat(kg || 0);
+  await dbPut('lotes', lote);
+}
+
 // ============================================================
 // INIT
 // ============================================================
 async function init(){
   await initDB();
   await loadArrDia();
+  await loadLotes();
   updateDash();
   updateNet();
   agendarSync();
