@@ -1927,13 +1927,14 @@ async function salvarBiometria(){
 async function buscarDadosLote(gaiolaStr){
   if(!gaiolaStr || gaiolaStr.length < 1) return;
   const gaiolaId = parseInt(gaiolaStr);
-  if(!gaiolaId) return;
+  if(!gaiolaId || gaiolaId < 1 || gaiolaId > 80) return;
+  if(!db){ setTimeout(() => buscarDadosLote(gaiolaStr), 500); return; }
   
   try {
     // Busca ração total acumulada dos registros de alimentação
     const todasGaiolas = await dbGetAll('gaiolas');
     const registrosGaiola = todasGaiolas.filter(g => g.cage_id === gaiolaId);
-    const racaoTotal = registrosGaiola.reduce((sum, g) => sum + (g.kg || 0), 0);
+    const racaoTotal = registrosGaiola.reduce((sum, g) => sum + (parseFloat(g.kg) || 0), 0);
     
     // Busca última biometria desta gaiola
     const todasBio = await dbGetAll('biometria');
@@ -2240,27 +2241,57 @@ let climaAtual = null;
 
 async function buscarClima(){
   try {
-    if(!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(async pos => {
-      const lat = pos.coords.latitude;
-      const lon = pos.coords.longitude;
-      const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${OW_KEY}&units=metric&lang=pt_br`;
-      const resp = await fetch(url);
-      const data = await resp.json();
-      climaAtual = {
-        temp: data.main.temp.toFixed(1),
-        sensacao: data.main.feels_like.toFixed(1),
-        umidade: data.main.humidity,
-        vento: data.wind.speed.toFixed(1),
-        descricao: data.weather[0].description,
-        icone: data.weather[0].icon,
-        cidade: data.name,
-        condicao: mapearCondicao(data.weather[0].main),
-        emoji: getClimaEmoji(data.weather[0].main)
-      };
-      atualizarClimaUI();
-    }, () => {}, {timeout:10000});
-  } catch(e) { console.log('Clima erro:', e); }
+    if(!navigator.geolocation){ usarClimaFortaleza(); return; }
+    navigator.geolocation.getCurrentPosition(
+      async pos => {
+        try {
+          const lat = pos.coords.latitude;
+          const lon = pos.coords.longitude;
+          const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${OW_KEY}&units=metric&lang=pt_br`;
+          const resp = await fetch(url);
+          if(!resp.ok) throw new Error('API error');
+          const data = await resp.json();
+          if(!data.main) throw new Error('Sem dados');
+          climaAtual = {
+            temp: parseFloat(data.main.temp).toFixed(1),
+            sensacao: parseFloat(data.main.feels_like).toFixed(1),
+            umidade: data.main.humidity,
+            vento: parseFloat(data.wind.speed).toFixed(1),
+            descricao: data.weather[0].description,
+            cidade: data.name,
+            condicao: mapearCondicao(data.weather[0].main),
+            emoji: mapearEmoji(data.weather[0].main)
+          };
+          atualizarClimaUI();
+        } catch(err) {
+          console.log('Clima fetch erro:', err);
+          usarClimaFortaleza();
+        }
+      },
+      () => usarClimaFortaleza(),
+      {timeout:8000, enableHighAccuracy:false}
+    );
+  } catch(e) { usarClimaFortaleza(); }
+}
+
+function usarClimaFortaleza(){
+  // Clima padrão quando GPS/API falha — mostra campos vazios para preenchimento manual
+  climaAtual = {
+    temp: '--',
+    sensacao: '--',
+    umidade: '--',
+    vento: '--',
+    descricao: 'GPS não disponível — selecione manualmente',
+    cidade: 'Carlópolis-PR',
+    condicao: '',
+    emoji: '🌤️'
+  };
+  atualizarClimaUI();
+}
+
+function mapearEmoji(main){
+  const m = {Clear:'☀️',Clouds:'☁️',Rain:'🌧️',Drizzle:'🌦️',Thunderstorm:'⛈️',Snow:'❄️',Mist:'🌫️',Fog:'🌫️',Haze:'🌫️',Smoke:'🌫️'};
+  return m[main] || '🌤️';
 }
 
 function mapearCondicao(main){
@@ -2277,26 +2308,22 @@ function mapearCondicao(main){
   return mapa[main] || main;
 }
 
-function getClimaEmoji(main){
-  const mapa = {Clear:'☀️', Clouds:'☁️', Rain:'🌧️', Drizzle:'🌦️', Thunderstorm:'⛈️', Snow:'❄️', Mist:'🌫️', Fog:'🌫️'};
-  return mapa[main] || '🌤️';
-}
-
 function atualizarClimaUI(){
   if(!climaAtual) return;
+  const set = id => document.getElementById(id);
   
-  // Card gaiola
+  // Card gaiola — sempre mostra
   const cgCard = document.getElementById('clima-card-gaiola');
   if(cgCard){
     cgCard.style.display = 'block';
-    const el = id => document.getElementById(id);
-    if(el('clima-temp-gaiola')) el('clima-temp-gaiola').textContent = climaAtual.temp + '°C';
-    if(el('clima-cidade-gaiola')) el('clima-cidade-gaiola').textContent = climaAtual.cidade;
-    if(el('clima-desc-gaiola')) el('clima-desc-gaiola').textContent = climaAtual.descricao;
-    if(el('clima-extra-gaiola')) el('clima-extra-gaiola').textContent = 'Umidade ' + climaAtual.umidade + '% · Vento ' + climaAtual.vento + 'm/s · Sensação ' + climaAtual.sensacao + '°C';
-    if(el('clima-icon-gaiola')) el('clima-icon-gaiola').textContent = climaAtual.emoji || '🌤️';
+    if(set('clima-temp-gaiola')) set('clima-temp-gaiola').textContent = climaAtual.temp + '°C';
+    if(set('clima-cidade-gaiola')) set('clima-cidade-gaiola').textContent = climaAtual.cidade;
+    if(set('clima-desc-gaiola')) set('clima-desc-gaiola').textContent = climaAtual.descricao;
+    if(set('clima-extra-gaiola')) set('clima-extra-gaiola').textContent = 'Umidade ' + climaAtual.umidade + '% · Vento ' + climaAtual.vento + 'm/s · Sensação ' + climaAtual.sensacao + '°C';
+    if(set('clima-icon-gaiola')) set('clima-icon-gaiola').textContent = climaAtual.emoji || '🌤️';
   }
 
+  // Card hídrico
   // Card hídrico
   const chCard = document.getElementById('clima-card-hidrico');
   const chLoading = document.getElementById('clima-loading-hidrico');
@@ -2304,13 +2331,13 @@ function atualizarClimaUI(){
     chCard.style.display = 'block';
     if(chLoading) chLoading.style.display = 'none';
     const el = id => document.getElementById(id);
-    if(el('clima-temp-hidrico')) el('clima-temp-hidrico').textContent = climaAtual.temp + '°C';
-    if(el('clima-cidade-hidrico')) el('clima-cidade-hidrico').textContent = climaAtual.cidade;
-    if(el('clima-desc-hidrico')) el('clima-desc-hidrico').textContent = climaAtual.descricao;
-    if(el('clima-umidade-hidrico')) el('clima-umidade-hidrico').textContent = climaAtual.umidade;
-    if(el('clima-vento-hidrico')) el('clima-vento-hidrico').textContent = climaAtual.vento;
-    if(el('clima-sens-hidrico')) el('clima-sens-hidrico').textContent = climaAtual.sensacao;
-    if(el('clima-icon-hidrico')) el('clima-icon-hidrico').textContent = climaAtual.emoji || '🌤️';
+    if(set('clima-temp-hidrico')) set('clima-temp-hidrico').textContent = climaAtual.temp + '°C';
+    if(set('clima-cidade-hidrico')) set('clima-cidade-hidrico').textContent = climaAtual.cidade;
+    if(set('clima-desc-hidrico')) set('clima-desc-hidrico').textContent = climaAtual.descricao;
+    if(set('clima-umidade-hidrico')) set('clima-umidade-hidrico').textContent = climaAtual.umidade;
+    if(set('clima-vento-hidrico')) set('clima-vento-hidrico').textContent = climaAtual.vento;
+    if(set('clima-sens-hidrico')) set('clima-sens-hidrico').textContent = climaAtual.sensacao;
+    if(set('clima-icon-hidrico')) set('clima-icon-hidrico').textContent = climaAtual.emoji || '🌤️';
   }
 
   // Pré-seleciona condição climática nos selects
@@ -2322,7 +2349,8 @@ function atualizarClimaUI(){
 }
 
 // Busca clima a cada 15 minutos
-buscarClima();
+// Busca clima ao iniciar e a cada 15 min
+setTimeout(buscarClima, 2000);
 setInterval(buscarClima, 15 * 60 * 1000);
 
 </body>
