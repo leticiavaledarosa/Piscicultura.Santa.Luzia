@@ -1220,10 +1220,56 @@ function renderCageMap(){
 
 // Event delegation para gaiolas — funciona mesmo após re-render
 document.addEventListener('click', function(e){
+  // ---- GAIOLA ----
   const cage = e.target.closest('[data-cage-id]');
   if(cage){
     const id = parseInt(cage.dataset.cageId);
-    if(id) openCage(id);
+    if(id > 0){
+      e.stopPropagation();
+      openCage(id);
+      return;
+    }
+  }
+  // ---- PILLS CAUSA MORTE ----
+  const causaPill = e.target.closest('#causa-pills .pill');
+  if(causaPill){
+    document.querySelectorAll('#causa-pills .pill').forEach(p => p.classList.remove('sel'));
+    causaPill.classList.add('sel');
+    const causa = causaPill.dataset.causa;
+    document.getElementById('g-causa-sel').value = causa;
+    const outroWrap = document.getElementById('causa-outro-wrap');
+    outroWrap.style.display = causa === 'Outro' ? 'block' : 'none';
+    if(causa !== 'Outro' && document.getElementById('g-causa')) document.getElementById('g-causa').value = '';
+    return;
+  }
+  // ---- PILLS RAÇÃO ----
+  const pill = e.target.closest('#racao-pills .pill');
+  if(pill){
+    document.querySelectorAll('#racao-pills .pill').forEach(p => p.classList.remove('sel'));
+    pill.classList.add('sel');
+    document.getElementById('outro-obs').style.display = pill.dataset.racao === 'Outro' ? 'block':'none';
+    return;
+  }
+  // ---- LOTE PILLS ----
+  const lpill = e.target.closest('#lote-racao-pills .pill');
+  if(lpill){
+    document.querySelectorAll('#lote-racao-pills .pill').forEach(p=>p.classList.remove('sel'));
+    lpill.classList.add('sel');
+    return;
+  }
+  // ---- SEGS ----
+  const segBtn = e.target.closest('.seg button');
+  if(segBtn){
+    const seg = segBtn.parentElement;
+    seg.querySelectorAll('button').forEach(b=>b.classList.remove('on'));
+    segBtn.classList.add('on');
+    return;
+  }
+  // ---- ACCORDION ----
+  const accHead = e.target.closest('.acc-head');
+  if(accHead){
+    accHead.parentElement.classList.toggle('open');
+    return;
   }
 });
 
@@ -1247,67 +1293,81 @@ document.getElementById('sector-chips').addEventListener('click', e => {
 
 // ===================== OPEN CAGE =====================
 function openCage(id){
-  currentCageId = id;
-  const sector = getSector(id);
-  const data = gaiolas[id] || {};
-  document.getElementById('gaiola-setor-lbl').textContent = 'Setor ' + sector + ' · Gaiola';
-  document.getElementById('gaiola-num-lbl').textContent = String(id).padStart(3,'0');
-  // status
-  const sema = document.getElementById('gaiola-status-sema');
-  if(data.kg){
-    const st = getCageStatus(id);
-    sema.className = 'sema ' + (st==='ok'?'g':st==='warn'?'y':'r');
-    sema.innerHTML = '<span class="d"></span>' + (st==='ok'?'Registrada':st==='warn'?'Atenção':'Pendente');
-  } else {
-    sema.className = 'sema r';
-    sema.innerHTML = '<span class="d"></span>Pendente';
+  try {
+    currentCageId = id;
+    const sector = getSector(id);
+    const data = gaiolas[id] || {};
+    document.getElementById('gaiola-setor-lbl').textContent = 'Setor ' + sector + ' · Gaiola';
+    document.getElementById('gaiola-num-lbl').textContent = String(id).padStart(3,'0');
+    // status
+    const sema = document.getElementById('gaiola-status-sema');
+    if(data.kg){
+      const st = getCageStatus(id);
+      sema.className = 'sema ' + (st==='ok'?'g':st==='warn'?'y':'r');
+      sema.innerHTML = '<span class="d"></span>' + (st==='ok'?'Registrada':st==='warn'?'Atenção':'Pendente');
+    } else {
+      sema.className = 'sema r';
+      sema.innerHTML = '<span class="d"></span>Pendente';
+    }
+    // tratadores
+    const sel1 = document.getElementById('g-trat1');
+    if(sel1){ [...sel1.options].forEach(o => o.selected = o.value === (data.trat1||'')); }
+    const sel2 = document.getElementById('g-trat2');
+    if(sel2){ [...sel2.options].forEach(o => o.selected = o.value === (data.trat2||'')); }
+    // campos simples
+    const kg = document.getElementById('g-kg'); if(kg) kg.value = data.kg || '';
+    const hora = document.getElementById('g-hora'); if(hora) hora.value = data.hora || (nowTime() + ' (auto)');
+    const gps = document.getElementById('g-gps'); if(gps) gps.value = data.gps || '';
+    const mortes = document.getElementById('g-mortes'); if(mortes) mortes.value = data.mortes || 0;
+    const obs = document.getElementById('g-obs'); if(obs) obs.value = data.obs || '';
+    // causa morte pills
+    document.querySelectorAll('#causa-pills .pill').forEach(p => {
+      p.classList.toggle('sel', p.dataset.causa === data.causa_morte);
+    });
+    const causaSel = document.getElementById('g-causa-sel');
+    if(causaSel) causaSel.value = data.causa_morte || '';
+    const isOutro = data.causa_morte && !['Manuseio','Doença','Predador','Falta de OD','Temperatura','Briga','Não sei'].includes(data.causa_morte);
+    const outroWrap = document.getElementById('causa-outro-wrap');
+    if(outroWrap) outroWrap.style.display = isOutro ? 'block' : 'none';
+    const causaInput = document.getElementById('g-causa');
+    if(isOutro && causaInput) causaInput.value = data.causa_morte || '';
+    // ração pills
+    document.querySelectorAll('#racao-pills .pill').forEach(p => {
+      p.classList.toggle('sel', p.dataset.racao === data.racao_tipo);
+    });
+    const outroObs = document.getElementById('outro-obs');
+    if(outroObs) outroObs.style.display = data.racao_tipo === 'Outro' ? 'block' : 'none';
+    const racaoOutro = document.getElementById('g-racao-outro');
+    if(racaoOutro) racaoOutro.value = data.racao_outro || '';
+    // segs
+    setSegValue('g-consumo', data.consumo || 'total');
+    setSegValue('g-comportamento', data.comportamento || 'normal');
+    // foto
+    const preview = document.getElementById('photo-preview');
+    const placeholder = document.getElementById('photo-placeholder');
+    if(data.foto && data.foto.length > 10){
+      preview.src = data.foto;
+      preview.style.display = 'block';
+      placeholder.style.display = 'none';
+    } else {
+      preview.style.display = 'none';
+      placeholder.style.display = 'flex';
+    }
+    // nav
+    const lblPrev = document.getElementById('lbl-prev');
+    const lblNext = document.getElementById('lbl-next');
+    if(lblPrev) lblPrev.textContent = id > 1 ? String(id-1).padStart(3,'0') : '—';
+    if(lblNext) lblNext.textContent = id < TOTAL_GAIOLAS ? String(id+1).padStart(3,'0') : '—';
+    const btnPrev = document.getElementById('btn-prev-cage');
+    const btnNext = document.getElementById('btn-next-cage');
+    if(btnPrev) btnPrev.disabled = id <= 1;
+    if(btnNext) btnNext.disabled = id >= TOTAL_GAIOLAS;
+    autoGPS();
+    goTo('v-gaiola');
+  } catch(err) {
+    console.error('Erro ao abrir gaiola:', err);
+    goTo('v-gaiola');
   }
-  // fill fields
-  const sel1 = document.getElementById('g-trat1');
-  if(sel1){ [...sel1.options].forEach(o => o.selected = o.value === (data.trat1||'')); }
-  const sel2 = document.getElementById('g-trat2');
-  if(sel2){ [...sel2.options].forEach(o => o.selected = o.value === (data.trat2||'')); }
-  document.getElementById('g-kg').value = data.kg || '';
-  document.getElementById('g-hora').value = data.hora || (nowTime() + ' (auto)');
-  document.getElementById('g-gps').value = data.gps || '';
-  document.getElementById('g-mortes').value = data.mortes || 0;
-  // Causa da morte — pills
-  document.querySelectorAll('#causa-pills .pill').forEach(p => {
-    p.classList.toggle('sel', p.dataset.causa === data.causa_morte);
-  });
-  document.getElementById('g-causa-sel').value = data.causa_morte || '';
-  const isOutro = data.causa_morte && !['Manuseio','Doença','Predador','Falta de OD','Temperatura','Briga','Não sei'].includes(data.causa_morte);
-  document.getElementById('causa-outro-wrap').style.display = isOutro ? 'block' : 'none';
-  if(isOutro && document.getElementById('g-causa')) document.getElementById('g-causa').value = data.causa_morte || '';
-  document.getElementById('g-temp').value = data.temp_agua || '';
-  document.getElementById('g-obs').value = data.obs || '';
-  // pills
-  document.querySelectorAll('#racao-pills .pill').forEach(p => {
-    p.classList.toggle('sel', p.dataset.racao === data.racao_tipo);
-  });
-  document.getElementById('outro-obs').style.display = data.racao_tipo === 'Outro' ? 'block' : 'none';
-  document.getElementById('g-racao-outro').value = data.racao_outro || '';
-  // segs
-  setSegValue('g-consumo', data.consumo || 'total');
-  setSegValue('g-comportamento', data.comportamento || 'normal');
-  // photo
-  const preview = document.getElementById('photo-preview');
-  const placeholder = document.getElementById('photo-placeholder');
-  if(data.foto && data.foto.length > 10){
-    preview.src = data.foto;
-    preview.style.display = 'block';
-    placeholder.style.display = 'none';
-  } else {
-    preview.style.display = 'none';
-    placeholder.style.display = 'flex';
-  }
-  // nav labels
-  document.getElementById('lbl-prev').textContent = id > 1 ? String(id-1).padStart(3,'0') : '—';
-  document.getElementById('lbl-next').textContent = id < TOTAL_GAIOLAS ? String(id+1).padStart(3,'0') : '—';
-  document.getElementById('btn-prev-cage').disabled = id <= 1;
-  document.getElementById('btn-next-cage').disabled = id >= TOTAL_GAIOLAS;
-  autoGPS();
-  goTo('v-gaiola');
 }
 
 function navCage(dir){
@@ -1330,43 +1390,6 @@ function setSegValue(id, val){
     b.classList.toggle('on', b.dataset.val === val);
   });
 }
-
-document.addEventListener('click', e => {
-  // pills causa morte
-  const causaPill = e.target.closest('#causa-pills .pill');
-  if(causaPill){
-    document.querySelectorAll('#causa-pills .pill').forEach(p => p.classList.remove('sel'));
-    causaPill.classList.add('sel');
-    const causa = causaPill.dataset.causa;
-    document.getElementById('g-causa-sel').value = causa;
-    const outroWrap = document.getElementById('causa-outro-wrap');
-    outroWrap.style.display = causa === 'Outro' ? 'block' : 'none';
-    if(causa !== 'Outro' && document.getElementById('g-causa')) document.getElementById('g-causa').value = '';
-  }
-  // pills ração
-  const pill = e.target.closest('#racao-pills .pill');
-  if(pill){
-    document.querySelectorAll('#racao-pills .pill').forEach(p => p.classList.remove('sel'));
-    pill.classList.add('sel');
-    document.getElementById('outro-obs').style.display = pill.dataset.racao === 'Outro' ? 'block':'none';
-  }
-  // lote pills
-  const lpill = e.target.closest('#lote-racao-pills .pill');
-  if(lpill){
-    document.querySelectorAll('#lote-racao-pills .pill').forEach(p=>p.classList.remove('sel'));
-    lpill.classList.add('sel');
-  }
-  // segs
-  const segBtn = e.target.closest('.seg button');
-  if(segBtn){
-    const seg = segBtn.parentElement;
-    seg.querySelectorAll('button').forEach(b=>b.classList.remove('on'));
-    segBtn.classList.add('on');
-  }
-  // accordion
-  const accHead = e.target.closest('.acc-head');
-  if(accHead) accHead.parentElement.classList.toggle('open');
-});
 
 // Lote sector chips
 document.getElementById('lote-sector-chips').addEventListener('click', e => {
