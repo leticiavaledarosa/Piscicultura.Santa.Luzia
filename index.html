@@ -237,6 +237,14 @@ select.input{appearance:none;-webkit-appearance:none;background-image:url("data:
 .sync-dot{width:8px;height:8px;border-radius:50%;display:inline-block;}
 .sync-dot.pending{background:var(--warn);}
 .sync-dot.synced{background:var(--ok);}
+
+.clima-card{display:none;align-items:center;gap:12px;background:rgba(45,212,191,.08);border:1px solid rgba(45,212,191,.2);border-radius:14px;padding:12px 14px;margin-bottom:12px;}
+.clima-icon{font-size:28px;flex:0 0 auto;}
+.clima-info{flex:1;}
+.clima-val{font-family:var(--title);font-weight:800;font-size:22px;color:var(--aqua);}
+.clima-desc{font-size:12px;color:var(--muted);margin-top:1px;}
+.clima-extra{font-size:11px;color:var(--muted);margin-top:2px;}
+
 </style>
 <script>
 // PWA — Manifest inline
@@ -587,20 +595,23 @@ function instalarApp(){
         <!-- Causa da Morte -->
         <div class="card field" style="margin-bottom:12px;" id="causa-morte-wrap">
           <div class="label"><svg class="ic ic-sm"><use href="#i-skull"/></svg>Causa da mortalidade</div>
-          <div class="pills" id="causa-pills" style="margin-bottom:10px;">
-            <button class="pill" data-causa="Manuseio">🤲 Manuseio</button>
-            <button class="pill" data-causa="Doença">🦠 Doença</button>
-            <button class="pill" data-causa="Predador">🦅 Predador</button>
-            <button class="pill" data-causa="Falta de OD">💧 Falta de OD</button>
-            <button class="pill" data-causa="Temperatura">🌡️ Temperatura</button>
-            <button class="pill" data-causa="Briga">⚔️ Briga</button>
-            <button class="pill" data-causa="Não sei">🤷 Não sei</button>
-            <button class="pill" data-causa="Outro">✏️ Outro</button>
-          </div>
-          <div id="causa-outro-wrap" style="display:none;">
+          <select class="input" id="g-causa-sel" style="font-size:15px;" onchange="document.getElementById('causa-outro-wrap').style.display=this.value==='Outro'?'block':'none'">
+            <option value="">Selecione a causa...</option>
+            <option value="Manuseio">🤲 Manuseio</option>
+            <option value="Doença">🦠 Doença</option>
+            <option value="Predador">🦅 Predador</option>
+            <option value="Falta de OD">💧 Falta de OD</option>
+            <option value="Temperatura">🌡️ Temperatura</option>
+            <option value="Briga">⚔️ Briga</option>
+            <option value="Estresse">😰 Estresse</option>
+            <option value="Superlotação">🐟 Superlotação</option>
+            <option value="Qualidade da água">🧪 Qualidade da água</option>
+            <option value="Não sei">🤷 Não sei</option>
+            <option value="Outro">✏️ Outro</option>
+          </select>
+          <div id="causa-outro-wrap" style="display:none;margin-top:8px;">
             <input class="input" id="g-causa" placeholder="Descreva a causa..." style="font-size:15px;"/>
           </div>
-          <input type="hidden" id="g-causa-sel" value=""/>
         </div>
 
         <!-- Comportamento -->
@@ -613,9 +624,41 @@ function instalarApp(){
           </div>
         </div>
 
+
+        <!-- Condição Climática -->
+        <div class="card field" style="margin-bottom:12px;">
+          <div class="label"><svg class="ic ic-sm"><use href="#i-sun"/></svg>Condição climática</div>
+          <!-- Card clima API -->
+          <div id="clima-card-gaiola" style="display:none;background:rgba(45,212,191,.08);border:1px solid rgba(45,212,191,.2);border-radius:12px;padding:10px 14px;margin-bottom:10px;">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span style="font-size:24px;" id="clima-icon-gaiola">🌤️</span>
+              <div style="flex:1;">
+                <div style="display:flex;align-items:baseline;gap:8px;">
+                  <span style="font-family:var(--title);font-weight:800;font-size:22px;color:var(--aqua);" id="clima-temp-gaiola">--°C</span>
+                  <span style="font-size:11px;color:var(--muted);" id="clima-cidade-gaiola">--</span>
+                </div>
+                <div style="font-size:12px;color:var(--muted);margin-top:2px;" id="clima-desc-gaiola">Buscando clima...</div>
+                <div style="font-size:11px;color:var(--muted);margin-top:1px;" id="clima-extra-gaiola">--</div>
+              </div>
+            </div>
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">Confirme ou ajuste a condição:</div>
+          <select class="input" id="g-clima" data-clima-select style="font-size:15px;">
+            <option value="">Selecione...</option>
+            <option value="Céu limpo">☀️ Céu limpo</option>
+            <option value="Parcialmente nublado">⛅ Parcialmente nublado</option>
+            <option value="Nublado">☁️ Nublado</option>
+            <option value="Garoa">🌦️ Garoa</option>
+            <option value="Chuva fraca">🌧️ Chuva fraca</option>
+            <option value="Chuva forte">⛈️ Chuva forte</option>
+            <option value="Tempestade">🌩️ Tempestade</option>
+            <option value="Névoa/Neblina">🌫️ Névoa/Neblina</option>
+            <option value="Vento forte">💨 Vento forte</option>
+          </select>
+        </div>
         <!-- Observações -->
         <div class="card field" style="margin-bottom:12px;">
-          <div class="label"><svg class="ic ic-sm"><use href="#i-note"/></svg>Observações</div>
+          <div class="label"><svg class="ic ic-sm"><use href="#i-note"/></svg>Anotações importantes</div>
           <textarea class="input textarea" id="g-obs" placeholder="Anote algo relevante sobre esta gaiola..."></textarea>
         </div>
 
@@ -667,6 +710,41 @@ function instalarApp(){
     </div>
     <div class="content">
       <div class="pad" style="padding-top:12px;">
+
+        <!-- CLIMA AUTOMÁTICO -->
+        <div class="clima-card">
+          <div class="clima-icon">🌤️</div>
+          <div class="clima-info">
+            <div style="display:flex;align-items:baseline;gap:8px;">
+              <span class="clima-val">--°C</span>
+              <span style="font-size:11px;color:var(--muted);" data-clima-cidade>Buscando...</span>
+            </div>
+            <div class="clima-desc" data-clima-desc>Carregando clima...</div>
+            <div class="clima-extra">--</div>
+          </div>
+        </div>
+        <!-- Card clima API no hídrico -->
+        <div id="clima-card-hidrico" style="display:none;background:rgba(45,212,191,.08);border:1px solid rgba(45,212,191,.2);border-radius:14px;padding:12px 14px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <span style="font-size:28px;" id="clima-icon-hidrico">🌤️</span>
+            <div style="flex:1;">
+              <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;">
+                <span style="font-family:var(--title);font-weight:800;font-size:24px;color:var(--aqua);" id="clima-temp-hidrico">--°C</span>
+                <span style="font-size:12px;color:var(--muted);" id="clima-cidade-hidrico">Buscando localização...</span>
+              </div>
+              <div style="font-size:13px;color:var(--cream);margin-top:2px;" id="clima-desc-hidrico">--</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px;display:flex;gap:12px;">
+                <span>💧 Umidade: <b id="clima-umidade-hidrico">--</b>%</span>
+                <span>💨 Vento: <b id="clima-vento-hidrico">--</b>m/s</span>
+                <span>🌡️ Sensação: <b id="clima-sens-hidrico">--</b>°C</span>
+              </div>
+            </div>
+            <button onclick="buscarClima()" style="background:var(--surface);border:1px solid var(--line);color:var(--aqua);padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;">↻ Atualizar</button>
+          </div>
+        </div>
+        <div id="clima-loading-hidrico" style="font-size:12px;color:var(--muted);margin-bottom:12px;display:flex;align-items:center;gap:6px;">
+          <span>🌤️</span> Buscando clima da sua localização...
+        </div>
         <p class="muted" style="font-size:12px;margin:0 0 12px;">3 pontos de coleta · toque para expandir</p>
         <div id="hidrico-pontos"></div>
       </div>
@@ -697,47 +775,80 @@ function instalarApp(){
     </div>
     <div class="content">
       <div class="pad" style="padding-top:12px;">
-        <div class="row2" style="gap:12px;margin-bottom:12px;">
-          <div class="card field" style="margin-bottom:0;">
-            <div class="label"><svg class="ic ic-sm"><use href="#i-scale"/></svg>Peso médio</div>
-            <div class="input-suffix"><input class="input num" id="bio-peso" inputmode="decimal" placeholder="485"/><span class="suf">g</span></div>
+
+        <!-- Entrada de pesos um por um -->
+        <div class="card" style="margin-bottom:12px;">
+          <div class="label"><svg class="ic ic-sm"><use href="#i-scale"/></svg>Adicionar pesos das amostras</div>
+          <div style="display:flex;gap:8px;margin-bottom:10px;">
+            <div class="input-suffix" style="flex:1;">
+              <input class="input num" id="bio-peso-input" inputmode="decimal" placeholder="Ex: 485" style="font-size:20px;font-weight:800;"/>
+              <span class="suf">g</span>
+            </div>
+            <button onclick="adicionarPeso()" style="background:var(--orange);border:none;border-radius:12px;width:56px;height:54px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:0 0 auto;">
+              <svg class="ic" style="color:#1b1206"><use href="#i-check"/></svg>
+            </button>
           </div>
-          <div class="card field" style="margin-bottom:0;">
-            <div class="label"><svg class="ic ic-sm"><use href="#i-ruler"/></svg>Tamanho</div>
-            <div class="input-suffix"><input class="input num" id="bio-tam" inputmode="decimal" placeholder="28.5"/><span class="suf">cm</span></div>
-          </div>
-        </div>
-        <div class="row2" style="gap:12px;margin-bottom:12px;">
-          <div class="card field" style="margin-bottom:0;">
-            <div class="label">Nº amostras</div>
-            <input class="input num" id="bio-amostras" inputmode="numeric" placeholder="30"/>
-          </div>
-          <div class="card field" style="margin-bottom:0;">
-            <div class="label">Desvio padrão</div>
-            <div class="input-suffix"><input class="input num" id="bio-dp" inputmode="decimal" placeholder="42"/><span class="suf">g</span></div>
+          <!-- Lista de pesos -->
+          <div id="bio-lista-pesos" style="display:flex;flex-wrap:wrap;gap:6px;min-height:20px;margin-bottom:8px;"></div>
+          <!-- Contador -->
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:12px;color:var(--muted);" id="bio-contador">0 amostras</span>
+            <button onclick="limparPesos()" style="background:transparent;border:none;color:var(--bad);font-size:12px;font-weight:700;cursor:pointer;">Limpar tudo</button>
           </div>
         </div>
 
-        <!-- Indicadores calculados -->
-        <div class="card card-raised" style="margin-bottom:12px;" id="bio-indicadores">
-          <div class="kv"><span class="k">Fator de condição (K)</span><span class="v aqua" id="bio-k">—</span></div>
+        <!-- Tamanho médio -->
+        <div class="card field" style="margin-bottom:12px;">
+          <div class="label"><svg class="ic ic-sm"><use href="#i-ruler"/></svg>Comprimento médio</div>
+          <div class="input-suffix">
+            <input class="input num" id="bio-tam" inputmode="decimal" placeholder="28.5" oninput="calcBiometria()"/>
+            <span class="suf">cm</span>
+          </div>
+        </div>
+
+        <!-- Indicadores calculados automaticamente -->
+        <div class="card card-raised" style="margin-bottom:12px;">
+          <div class="label" style="margin-bottom:10px;color:var(--aqua);">📊 Calculado automaticamente</div>
+          <div class="kv"><span class="k">Amostras coletadas</span><span class="v aqua" id="bio-amostras-calc">0 peixes</span></div>
+          <div class="kv"><span class="k">Peso médio</span><span class="v" id="bio-media-calc">—</span></div>
+          <div class="kv"><span class="k">Menor peso</span><span class="v" id="bio-min-calc">—</span></div>
+          <div class="kv"><span class="k">Maior peso</span><span class="v" id="bio-max-calc">—</span></div>
+          <div class="kv"><span class="k">Desvio padrão</span><span class="v" id="bio-dp-calc">—</span></div>
+          <div class="kv"><span class="k">Uniformidade</span><span class="v ok" id="bio-uniform-calc">—</span></div>
+          <div class="kv"><span class="k">Fator K</span><span class="v aqua" id="bio-k">—</span></div>
           <div class="kv"><span class="k">Biomassa estimada</span><span class="v" id="bio-biomassa">—</span></div>
           <div class="kv"><span class="k">Ganho vs. anterior</span><span class="v ok" id="bio-ganho">—</span></div>
+          <div class="kv"><span class="k">Ganho diário</span><span class="v ok" id="bio-ganho-dia">—</span></div>
         </div>
 
         <!-- CA -->
-        <div class="card card-raised" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;" id="bio-ca-card">
+        <div class="card card-raised" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
           <div>
             <div class="label" style="margin:0 0 4px;">Conversão Alimentar (CA)</div>
             <div style="font-family:var(--title);font-weight:900;font-size:44px;line-height:.9;" id="bio-ca-val">—</div>
           </div>
           <span class="sema g" id="bio-ca-sema"><span class="d"></span>—</span>
         </div>
-        <p class="muted" style="font-size:11px;margin:0 0 16px;text-align:center;">Verde &lt;1,4 · Amarelo 1,4–1,7 · Laranja 1,7–2,0 · Vermelho &gt;2,0</p>
+        <p class="muted" style="font-size:11px;margin:0 0 12px;text-align:center;">Verde &lt;1,4 · Amarelo 1,4–1,7 · Laranja 1,7–2,0 · Vermelho &gt;2,0</p>
+
+        <!-- Previsão de abate -->
+        <div class="card" style="margin-bottom:12px;background:rgba(249,115,22,.08);border-color:rgba(249,115,22,.2);">
+          <div class="label" style="color:var(--orange);margin-bottom:8px;">🎯 Previsão de abate</div>
+          <div class="row2">
+            <div>
+              <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">Peso alvo (g)</div>
+              <input class="input num" id="bio-peso-alvo" inputmode="numeric" placeholder="800" oninput="calcPrevisaoAbate()" style="min-height:46px;font-size:16px;"/>
+            </div>
+            <div>
+              <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">Estimativa</div>
+              <div class="input" style="min-height:46px;display:flex;align-items:center;font-size:14px;font-weight:700;color:var(--orange);" id="bio-previsao-abate">—</div>
+            </div>
+          </div>
+        </div>
 
         <div class="card field" style="margin-bottom:12px;">
-          <div class="label">Observações</div>
-          <textarea class="input textarea" id="bio-obs" placeholder="Notas da biometria..."></textarea>
+          <div class="label"><svg class="ic ic-sm"><use href="#i-note"/></svg>Anotações importantes</div>
+          <textarea class="input textarea" id="bio-obs" placeholder="Registre observações relevantes desta biometria..."></textarea>
         </div>
 
         <!-- Histórico do lote -->
@@ -1076,7 +1187,7 @@ function goTo(id){
   if(id === 'v-dashboard') updateDashboard();
   if(id === 'v-gaiolas') renderCageMap();
   if(id === 'v-relatorio') buildRelatorio();
-  if(id === 'v-hidrico') buildHidrico();
+  if(id === 'v-hidrico'){ buildHidrico(); buscarClima(); }
   if(id === 'v-biometria') {
     document.getElementById('bio-hora').value = nowTime() + ' (auto)';
     calcBiometria();
@@ -1171,9 +1282,11 @@ async function salvarGaiola(){
     racao_outro: document.getElementById('g-racao-outro').value,
     kg: parseFloat(document.getElementById('g-kg').value) || 0,
     gps: document.getElementById('g-gps').value,
+    clima: document.getElementById('g-clima')?.value || '',
+    temp_ar: climaAtual ? climaAtual.temp : '',
     consumo: consumo_btn ? consumo_btn.dataset.val : 'total',
     mortes: parseInt(document.getElementById('g-mortes').value) || 0,
-    causa_morte: document.getElementById('g-causa-sel').value || document.getElementById('g-causa')?.value || '',
+    causa_morte: (document.getElementById('g-causa-sel')?.value === 'Outro' ? document.getElementById('g-causa')?.value : document.getElementById('g-causa-sel')?.value) || '',
     temp_agua: 0,
     comportamento: comp_btn ? comp_btn.dataset.val : 'normal',
     obs: document.getElementById('g-obs').value,
@@ -1229,18 +1342,7 @@ document.addEventListener('click', function(e){
       return;
     }
   }
-  // ---- PILLS CAUSA MORTE ----
-  const causaPill = e.target.closest('#causa-pills .pill');
-  if(causaPill){
-    document.querySelectorAll('#causa-pills .pill').forEach(p => p.classList.remove('sel'));
-    causaPill.classList.add('sel');
-    const causa = causaPill.dataset.causa;
-    document.getElementById('g-causa-sel').value = causa;
-    const outroWrap = document.getElementById('causa-outro-wrap');
-    outroWrap.style.display = causa === 'Outro' ? 'block' : 'none';
-    if(causa !== 'Outro' && document.getElementById('g-causa')) document.getElementById('g-causa').value = '';
-    return;
-  }
+  // Causa morte agora é select — onchange no HTML
   // ---- PILLS RAÇÃO ----
   const pill = e.target.closest('#racao-pills .pill');
   if(pill){
@@ -1320,16 +1422,13 @@ function openCage(id){
     const mortes = document.getElementById('g-mortes'); if(mortes) mortes.value = data.mortes || 0;
     const obs = document.getElementById('g-obs'); if(obs) obs.value = data.obs || '';
     // causa morte pills
-    document.querySelectorAll('#causa-pills .pill').forEach(p => {
-      p.classList.toggle('sel', p.dataset.causa === data.causa_morte);
-    });
+    // Causa morte — select
     const causaSel = document.getElementById('g-causa-sel');
     if(causaSel) causaSel.value = data.causa_morte || '';
-    const isOutro = data.causa_morte && !['Manuseio','Doença','Predador','Falta de OD','Temperatura','Briga','Não sei'].includes(data.causa_morte);
     const outroWrap = document.getElementById('causa-outro-wrap');
-    if(outroWrap) outroWrap.style.display = isOutro ? 'block' : 'none';
+    if(outroWrap) outroWrap.style.display = data.causa_morte === 'Outro' ? 'block' : 'none';
     const causaInput = document.getElementById('g-causa');
-    if(isOutro && causaInput) causaInput.value = data.causa_morte || '';
+    if(causaInput && data.causa_morte === 'Outro') causaInput.value = data.causa_morte || '';
     // ração pills
     document.querySelectorAll('#racao-pills .pill').forEach(p => {
       p.classList.toggle('sel', p.dataset.racao === data.racao_tipo);
@@ -1362,6 +1461,7 @@ function openCage(id){
     if(btnPrev) btnPrev.disabled = id <= 1;
     if(btnNext) btnNext.disabled = id >= TOTAL_GAIOLAS;
     autoGPS();
+    buscarClima();
     goTo('v-gaiola');
   } catch(err) {
     console.error('Erro ao abrir gaiola:', err);
@@ -1563,7 +1663,15 @@ function buildHidrico(){
         <div class="acc-body">
           <div class="row2" style="margin-bottom:10px;">
             <div><div class="label" style="margin-bottom:4px;">Responsável</div>
-              <input class="input" id="h-p${pid}-resp" placeholder="Nome..." style="font-size:15px;min-height:46px;"/></div>
+              <select id="h-p${pid}-resp" class="input" style="font-size:15px;min-height:46px;">
+              <option value="">Selecione...</option>
+              <option value="Leticia">Leticia</option>
+              <option value="Kadu">Kadu</option>
+              <option value="Dorival">Dorival</option>
+              <option value="Elisangela">Elisangela</option>
+              <option value="Agnaldo">Agnaldo</option>
+              <option value="Choo">Choo</option>
+            </select></div>
             <div><div class="label" style="margin-bottom:4px;"><svg class="ic" style="width:14px;height:14px"><use href="#i-clock"/></svg>Horário</div>
               <input class="input input-auto" id="h-p${pid}-hora" value="${nowTime()} (auto)" readonly style="min-height:46px;font-size:13px;"/></div>
           </div>
@@ -1614,55 +1722,190 @@ async function salvarHidrico(pid){
 }
 
 // ===================== BIOMETRIA =====================
-function calcBiometria(){
-  const peso = parseFloat(document.getElementById('bio-peso').value) || 0;
-  const tam = parseFloat(document.getElementById('bio-tam').value) || 0;
-  const amostras = parseInt(document.getElementById('bio-amostras').value) || 0;
-  const K = tam > 0 ? (100 * peso / Math.pow(tam, 3)).toFixed(3) : '—';
-  document.getElementById('bio-k').textContent = K !== '—' ? K : '—';
-  const biomassa = peso > 0 && amostras > 0 ? ((peso * amostras) / 1000).toFixed(1) + ' kg' : '—';
-  document.getElementById('bio-biomassa').textContent = biomassa;
-  // CA do ciclo
-  const racao = parseFloat(document.getElementById('lote-racao')?.value) || 0;
-  const pesoinicial = parseFloat(document.getElementById('lote-pesoinicial')?.value) || 0;
-  const qtd = parseInt(document.getElementById('lote-qtd')?.value) || 0;
-  if(racao > 0 && peso > 0 && qtd > 0 && pesoinicial > 0){
-    const bioAtual = (peso * qtd) / 1000;
-    const bioInicial = (pesoinicial * qtd) / 1000;
-    const ca = racao / (bioAtual - bioInicial);
-    const caEl = document.getElementById('bio-ca-val');
-    if(caEl){ caEl.textContent = ca.toFixed(2).replace('.',','); caEl.style.color = caColor(ca); }
-    const sema = document.getElementById('bio-ca-sema');
-    if(sema){ const [cls,lbl] = caClass(ca); sema.className='sema '+cls; sema.innerHTML=`<span class="d"></span>${lbl}`; }
+// ===================== BIOMETRIA — pesos individuais =====================
+let bioAmostras = []; // array de pesos digitados
+
+function adicionarPeso(){
+  const input = document.getElementById('bio-peso-input');
+  const val = parseFloat(input.value);
+  if(!val || val < 1 || val > 5000){ 
+    input.style.borderColor = 'var(--bad)';
+    setTimeout(() => input.style.borderColor = '', 1000);
+    return;
   }
-  // Histórico
-  const dataPovoamento = document.getElementById('lote-data')?.value;
-  if(dataPovoamento){
-    const dias = Math.floor((Date.now() - new Date(dataPovoamento).getTime()) / 86400000);
-    document.getElementById('bio-h-dias').textContent = dias + ' dias';
-    document.getElementById('bio-h-data').textContent = new Date(dataPovoamento).toLocaleDateString('pt-BR');
-  }
-  const qtdEl = document.getElementById('lote-qtd');
-  if(qtdEl) document.getElementById('bio-h-qtd').textContent = (qtdEl.value || '—') + ' peixes';
-  const piEl = document.getElementById('lote-pesoinicial');
-  if(piEl) document.getElementById('bio-h-peso').textContent = (piEl.value || '—') + ' g';
-  const raEl = document.getElementById('lote-racao');
-  if(raEl) document.getElementById('bio-h-racao').textContent = (raEl.value || '—') + ' kg';
+  bioAmostras.push(val);
+  input.value = '';
+  input.focus();
+  renderizarPesos();
+  calcBiometria();
+  // Vibra ao adicionar (feedback tátil)
+  if(navigator.vibrate) navigator.vibrate(50);
+  // Aviso ao atingir 30
+  if(bioAmostras.length === 30) showToast('30 amostras coletadas! ✅');
 }
 
-['bio-peso','bio-tam','bio-amostras','bio-dp','lote-racao','lote-pesoinicial','lote-qtd'].forEach(id => {
+function removerPeso(idx){
+  bioAmostras.splice(idx, 1);
+  renderizarPesos();
+  calcBiometria();
+}
+
+function limparPesos(){
+  if(bioAmostras.length === 0) return;
+  if(confirm('Limpar todas as ' + bioAmostras.length + ' amostras?')){
+    bioAmostras = [];
+    renderizarPesos();
+    calcBiometria();
+  }
+}
+
+function renderizarPesos(){
+  const container = document.getElementById('bio-lista-pesos');
+  const contador = document.getElementById('bio-contador');
+  if(!container) return;
+  container.innerHTML = bioAmostras.map((p, i) => 
+    `<span style="background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:4px 10px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;" onclick="removerPeso(${i})">
+      ${p}g <span style="color:var(--bad);font-size:10px;">✕</span>
+    </span>`
+  ).join('');
+  if(contador) contador.textContent = bioAmostras.length + ' amostras' + (bioAmostras.length >= 30 ? ' ✅' : ' (mín. 30)');
+}
+
+// Enter adiciona peso
+document.addEventListener('keydown', e => {
+  if(e.key === 'Enter' && document.activeElement?.id === 'bio-peso-input'){
+    e.preventDefault();
+    adicionarPeso();
+  }
+});
+
+function calcBiometria(){
+  const tam = parseFloat(document.getElementById('bio-tam')?.value) || 0;
+  const n = bioAmostras.length;
+  
+  if(n === 0){
+    ['bio-amostras-calc','bio-media-calc','bio-min-calc','bio-max-calc','bio-dp-calc','bio-uniform-calc','bio-k','bio-biomassa','bio-ganho','bio-ganho-dia'].forEach(id => {
+      const el = document.getElementById(id);
+      if(el) el.textContent = '—';
+    });
+    return;
+  }
+
+  // Cálculos estatísticos
+  const media = bioAmostras.reduce((a,b) => a+b, 0) / n;
+  const min = Math.min(...bioAmostras);
+  const max = Math.max(...bioAmostras);
+  const variancia = bioAmostras.reduce((a,b) => a + Math.pow(b-media, 2), 0) / n;
+  const dp = Math.sqrt(variancia);
+  const cv = (dp / media) * 100; // coeficiente de variação
+  const uniformidade = Math.max(0, 100 - cv).toFixed(1);
+
+  // Atualiza UI
+  const set = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
+  set('bio-amostras-calc', n + ' peixes' + (n >= 30 ? ' ✅' : ''));
+  set('bio-media-calc', media.toFixed(1) + 'g');
+  set('bio-min-calc', min + 'g');
+  set('bio-max-calc', max + 'g');
+  set('bio-dp-calc', dp.toFixed(1) + 'g');
+  
+  const uEl = document.getElementById('bio-uniform-calc');
+  if(uEl){
+    uEl.textContent = uniformidade + '%';
+    uEl.className = 'v ' + (uniformidade >= 80 ? 'ok' : uniformidade >= 60 ? '' : 'bad');
+  }
+
+  // Fator K
+  if(tam > 0){
+    const K = (100 * media / Math.pow(tam, 3));
+    set('bio-k', K.toFixed(3) + (K >= 1.5 && K <= 2.5 ? ' ✅' : ' ⚠️'));
+  }
+
+  // Biomassa
+  const qtd = parseInt(document.getElementById('lote-qtd')?.value) || 0;
+  if(qtd > 0){
+    const biomassa = (media * qtd) / 1000;
+    set('bio-biomassa', biomassa.toFixed(1) + ' kg');
+  }
+
+  // CA
+  const racao = parseFloat(document.getElementById('lote-racao')?.value) || 0;
+  const pesoinicial = parseFloat(document.getElementById('lote-pesoinicial')?.value) || 0;
+  if(racao > 0 && qtd > 0 && pesoinicial > 0){
+    const bioAtual = (media * qtd) / 1000;
+    const bioInicial = (pesoinicial * qtd) / 1000;
+    const ganho = bioAtual - bioInicial;
+    if(ganho > 0){
+      const ca = racao / ganho;
+      const caEl = document.getElementById('bio-ca-val');
+      if(caEl){ caEl.textContent = ca.toFixed(2).replace('.',','); caEl.style.color = caColor(ca); }
+      const sema = document.getElementById('bio-ca-sema');
+      if(sema){ const [cls,lbl] = caClass(ca); sema.className='sema '+cls; sema.innerHTML=`<span class="d"></span>${lbl}`; }
+      set('bio-ganho', ganho.toFixed(1) + ' kg');
+    }
+  }
+
+  // Ganho diário
+  const dataPovoamento = document.getElementById('lote-data')?.value;
+  if(dataPovoamento && pesoinicial > 0){
+    const dias = Math.floor((Date.now() - new Date(dataPovoamento).getTime()) / 86400000);
+    if(dias > 0){
+      const ganhoDia = ((media - pesoinicial) / dias).toFixed(2);
+      set('bio-ganho-dia', ganhoDia + 'g/dia');
+    }
+    set('bio-h-dias', dias + ' dias');
+    const el = document.getElementById('bio-h-data');
+    if(el) el.textContent = new Date(dataPovoamento).toLocaleDateString('pt-BR');
+  }
+
+  // Histórico
+  const qtdEl = document.getElementById('lote-qtd');
+  if(qtdEl){ const el = document.getElementById('bio-h-qtd'); if(el) el.textContent = (qtdEl.value||'—')+' peixes'; }
+  const piEl = document.getElementById('lote-pesoinicial');
+  if(piEl){ const el = document.getElementById('bio-h-peso'); if(el) el.textContent = (piEl.value||'—')+' g'; }
+  const raEl = document.getElementById('lote-racao');
+  if(raEl){ const el = document.getElementById('bio-h-racao'); if(el) el.textContent = (raEl.value||'—')+' kg'; }
+  
+  calcPrevisaoAbate(media);
+}
+
+function calcPrevisaoAbate(mediaAtual){
+  const pesoAlvo = parseFloat(document.getElementById('bio-peso-alvo')?.value) || 0;
+  const media = mediaAtual || (bioAmostras.length > 0 ? bioAmostras.reduce((a,b)=>a+b,0)/bioAmostras.length : 0);
+  const dataPovoamento = document.getElementById('lote-data')?.value;
+  const pesoinicial = parseFloat(document.getElementById('lote-pesoinicial')?.value) || 0;
+  const el = document.getElementById('bio-previsao-abate');
+  if(!el) return;
+  if(!pesoAlvo || !media || !dataPovoamento || !pesoinicial){ el.textContent = '—'; return; }
+  const dias = Math.floor((Date.now() - new Date(dataPovoamento).getTime()) / 86400000);
+  const ganhoDia = (media - pesoinicial) / dias;
+  if(ganhoDia <= 0){ el.textContent = 'Sem dados'; return; }
+  const diasRestantes = Math.ceil((pesoAlvo - media) / ganhoDia);
+  if(diasRestantes <= 0){ el.textContent = 'Pronto para abate! 🎣'; el.style.color = 'var(--ok)'; return; }
+  const dataAbate = new Date();
+  dataAbate.setDate(dataAbate.getDate() + diasRestantes);
+  el.textContent = diasRestantes + ' dias (' + dataAbate.toLocaleDateString('pt-BR') + ')';
+}
+
+['lote-racao','lote-pesoinicial','lote-qtd','bio-tam'].forEach(id => {
   const el = document.getElementById(id);
   if(el) el.addEventListener('input', calcBiometria);
 });
 
 async function salvarBiometria(){
+  const n = bioAmostras.length;
+  const media = n > 0 ? bioAmostras.reduce((a,b)=>a+b,0)/n : 0;
+  const variancia = n > 0 ? bioAmostras.reduce((a,b)=>a+Math.pow(b-media,2),0)/n : 0;
+  const dp = Math.sqrt(variancia);
   const rec = {
     data: dateKey(), hora: nowTime(),
     gaiola: document.getElementById('bio-gaiola').value,
-    peso: parseFloat(document.getElementById('bio-peso').value)||0,
+    peso: parseFloat(media.toFixed(1))||0,
     tamanho: parseFloat(document.getElementById('bio-tam').value)||0,
-    amostras: parseInt(document.getElementById('bio-amostras').value)||0,
-    dp: parseFloat(document.getElementById('bio-dp').value)||0,
+    amostras: n,
+    dp: parseFloat(dp.toFixed(1))||0,
+    min_peso: n > 0 ? Math.min(...bioAmostras) : 0,
+    max_peso: n > 0 ? Math.max(...bioAmostras) : 0,
+    pesos_individuais: JSON.stringify(bioAmostras),
     obs: document.getElementById('bio-obs').value,
     lote_data: document.getElementById('lote-data')?.value || '',
     lote_qtd: parseInt(document.getElementById('lote-qtd')?.value)||0,
@@ -1672,10 +1915,65 @@ async function salvarBiometria(){
   };
   await dbPut('biometria', rec);
   await dbPut('sync_queue', {data:rec, tipo:'biometria', ts:Date.now()});
-  showToast('Biometria salva!');
+  bioAmostras = [];
+  renderizarPesos();
+  calcBiometria();
+  showToast('Biometria salva! ✅');
   if(navigator.onLine) syncQueue();
 }
 
+
+// ===================== BIOMETRIA — busca dados do lote =====================
+async function buscarDadosLote(gaiolaStr){
+  if(!gaiolaStr || gaiolaStr.length < 1) return;
+  const gaiolaId = parseInt(gaiolaStr);
+  if(!gaiolaId) return;
+  
+  try {
+    // Busca ração total acumulada dos registros de alimentação
+    const todasGaiolas = await dbGetAll('gaiolas');
+    const registrosGaiola = todasGaiolas.filter(g => g.cage_id === gaiolaId);
+    const racaoTotal = registrosGaiola.reduce((sum, g) => sum + (g.kg || 0), 0);
+    
+    // Busca última biometria desta gaiola
+    const todasBio = await dbGetAll('biometria');
+    const biosGaiola = todasBio.filter(b => parseInt(b.gaiola) === gaiolaId);
+    biosGaiola.sort((a, b) => new Date(b.data) - new Date(a.data));
+    const ultimaBio = biosGaiola[0];
+    
+    // Preenche campos automaticamente
+    const set = (id, val) => { const el = document.getElementById(id); if(el && val) el.value = val; };
+    
+    if(racaoTotal > 0){
+      set('lote-racao', racaoTotal.toFixed(1));
+    }
+    
+    if(ultimaBio){
+      // Usa dados da última biometria como referência
+      if(ultimaBio.lote_data) set('lote-data', ultimaBio.lote_data);
+      if(ultimaBio.lote_qtd) set('lote-qtd', ultimaBio.lote_qtd);
+      if(ultimaBio.lote_pesoinicial) set('lote-pesoinicial', ultimaBio.lote_pesoinicial);
+      
+      // Mostra info
+      const infoEl = document.getElementById('bio-lote-info');
+      if(infoEl){
+        infoEl.style.display = 'block';
+        const diasCiclo = ultimaBio.lote_data ? Math.floor((Date.now() - new Date(ultimaBio.lote_data).getTime()) / 86400000) : '?';
+        infoEl.innerHTML = `✅ Lote encontrado · ${biosGaiola.length} biometria(s) · Ração acumulada: ${racaoTotal.toFixed(1)}kg · ${diasCiclo} dias de ciclo`;
+      }
+    } else if(racaoTotal > 0){
+      const infoEl = document.getElementById('bio-lote-info');
+      if(infoEl){
+        infoEl.style.display = 'block';
+        infoEl.innerHTML = `✅ Ração acumulada encontrada: ${racaoTotal.toFixed(1)}kg · Sem biometria anterior`;
+      }
+    }
+    
+    calcBiometria();
+  } catch(err) {
+    console.error('Erro buscar lote:', err);
+  }
+}
 // ===================== CA CALCULADORA =====================
 function caClass(v){
   if(v<1.4) return ['g','EXCELENTE'];
@@ -1935,5 +2233,97 @@ async function init(){
 
 init();
 </script>
+
+// ===================== CLIMA AUTOMÁTICO =====================
+const OW_KEY = '2dcbc9d5a08fe7a9abbedd560a7d2261';
+let climaAtual = null;
+
+async function buscarClima(){
+  try {
+    if(!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(async pos => {
+      const lat = pos.coords.latitude;
+      const lon = pos.coords.longitude;
+      const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${OW_KEY}&units=metric&lang=pt_br`;
+      const resp = await fetch(url);
+      const data = await resp.json();
+      climaAtual = {
+        temp: data.main.temp.toFixed(1),
+        sensacao: data.main.feels_like.toFixed(1),
+        umidade: data.main.humidity,
+        vento: data.wind.speed.toFixed(1),
+        descricao: data.weather[0].description,
+        icone: data.weather[0].icon,
+        cidade: data.name,
+        condicao: mapearCondicao(data.weather[0].main),
+        emoji: getClimaEmoji(data.weather[0].main)
+      };
+      atualizarClimaUI();
+    }, () => {}, {timeout:10000});
+  } catch(e) { console.log('Clima erro:', e); }
+}
+
+function mapearCondicao(main){
+  const mapa = {
+    'Clear': 'Céu limpo',
+    'Clouds': 'Nublado',
+    'Rain': 'Chuva',
+    'Drizzle': 'Garoa',
+    'Thunderstorm': 'Tempestade',
+    'Snow': 'Neve',
+    'Mist': 'Névoa',
+    'Fog': 'Neblina'
+  };
+  return mapa[main] || main;
+}
+
+function getClimaEmoji(main){
+  const mapa = {Clear:'☀️', Clouds:'☁️', Rain:'🌧️', Drizzle:'🌦️', Thunderstorm:'⛈️', Snow:'❄️', Mist:'🌫️', Fog:'🌫️'};
+  return mapa[main] || '🌤️';
+}
+
+function atualizarClimaUI(){
+  if(!climaAtual) return;
+  
+  // Card gaiola
+  const cgCard = document.getElementById('clima-card-gaiola');
+  if(cgCard){
+    cgCard.style.display = 'block';
+    const el = id => document.getElementById(id);
+    if(el('clima-temp-gaiola')) el('clima-temp-gaiola').textContent = climaAtual.temp + '°C';
+    if(el('clima-cidade-gaiola')) el('clima-cidade-gaiola').textContent = climaAtual.cidade;
+    if(el('clima-desc-gaiola')) el('clima-desc-gaiola').textContent = climaAtual.descricao;
+    if(el('clima-extra-gaiola')) el('clima-extra-gaiola').textContent = 'Umidade ' + climaAtual.umidade + '% · Vento ' + climaAtual.vento + 'm/s · Sensação ' + climaAtual.sensacao + '°C';
+    if(el('clima-icon-gaiola')) el('clima-icon-gaiola').textContent = climaAtual.emoji || '🌤️';
+  }
+
+  // Card hídrico
+  const chCard = document.getElementById('clima-card-hidrico');
+  const chLoading = document.getElementById('clima-loading-hidrico');
+  if(chCard){
+    chCard.style.display = 'block';
+    if(chLoading) chLoading.style.display = 'none';
+    const el = id => document.getElementById(id);
+    if(el('clima-temp-hidrico')) el('clima-temp-hidrico').textContent = climaAtual.temp + '°C';
+    if(el('clima-cidade-hidrico')) el('clima-cidade-hidrico').textContent = climaAtual.cidade;
+    if(el('clima-desc-hidrico')) el('clima-desc-hidrico').textContent = climaAtual.descricao;
+    if(el('clima-umidade-hidrico')) el('clima-umidade-hidrico').textContent = climaAtual.umidade;
+    if(el('clima-vento-hidrico')) el('clima-vento-hidrico').textContent = climaAtual.vento;
+    if(el('clima-sens-hidrico')) el('clima-sens-hidrico').textContent = climaAtual.sensacao;
+    if(el('clima-icon-hidrico')) el('clima-icon-hidrico').textContent = climaAtual.emoji || '🌤️';
+  }
+
+  // Pré-seleciona condição climática nos selects
+  document.querySelectorAll('[data-clima-select]').forEach(sel => {
+    [...sel.options].forEach(o => {
+      o.selected = o.value === climaAtual.condicao || o.text.includes(climaAtual.condicao);
+    });
+  });
+}
+
+// Busca clima a cada 15 minutos
+buscarClima();
+setInterval(buscarClima, 15 * 60 * 1000);
+
 </body>
 </html>
