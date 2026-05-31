@@ -1419,33 +1419,24 @@ function handlePhoto(input){
 }
 
 async function uploadFotoDrive(base64data, nomeArquivo){
-  // Salva localmente sempre
   showToast('Foto salva! ✅');
   if(!navigator.onLine) return;
-  
   try {
-    // Envia via fetch POST (foto é grande demais pra GET)
-    const payload = {
-      chave: CHAVE,
-      tipo: 'foto',
-      data: {
+    // Usa a Vercel Function /api/foto — sem problema de CORS
+    const response = await fetch('/api/foto', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
         base64: base64data,
         nome: nomeArquivo,
         cage_id: currentCageId,
         data: dateKey(),
-        pasta: '1dCbTHQVZEL-ncLN5461kbWPJ8TP5AErq'
-      }
-    };
-    fetch(WEBHOOK, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(payload)
-    }).then(() => {
-      showToast('Foto enviada pro Drive! 📷');
-    }).catch(() => {
-      showToast('Foto salva localmente');
+        chave: CHAVE
+      })
     });
+    if(response.ok){
+      showToast('Foto enviada pro Drive! 📷');
+    }
   } catch(err) {
     showToast('Foto salva localmente');
   }
