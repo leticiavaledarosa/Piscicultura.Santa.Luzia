@@ -146,6 +146,31 @@ body{font-family:var(--body);color:var(--cream);-webkit-font-smoothing:antialias
 .bio-peso-tag .x{color:var(--bad);font-size:10px;}
 </style>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, set, onValue, update, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBHhIZ55c_sfOAStquxYZ7nyZW1pfx20h0",
+  authDomain: "piscicultura-sitio-santa-luzia.firebaseapp.com",
+  databaseURL: "https://piscicultura-sitio-santa-luzia-default-rtdb.firebaseio.com",
+  projectId: "piscicultura-sitio-santa-luzia",
+  storageBucket: "piscicultura-sitio-santa-luzia.firebasestorage.app",
+  messagingSenderId: "211781501650",
+  appId: "1:211781501650:web:1e2ad004fb5658100c630b"
+};
+
+const app = initializeApp(firebaseConfig);
+const rtdb = getDatabase(app);
+
+// Expõe funções globalmente para o app usar
+window.fbSet = (path, data) => set(ref(rtdb, path), data);
+window.fbUpdate = (path, data) => update(ref(rtdb, path), data);
+window.fbOn = (path, cb) => onValue(ref(rtdb, path), snap => cb(snap.val()));
+window.fbServerTime = serverTimestamp;
+window.fbRef = (path) => ref(rtdb, path);
+window.rtdb = rtdb;
+</script>
 </head>
 <body>
 <div id="app">
@@ -251,6 +276,7 @@ body{font-family:var(--body);color:var(--cream);-webkit-font-smoothing:antialias
         </div>
         <div class="prog"><i id="dash-bar" style="width:0%"></i></div>
         <p class="muted" style="font-size:11px;margin:6px 0 0;" id="dash-prog-txt">0 de 80 gaiolas · 0 arraçoamentos hoje</p>
+        <p style="font-size:11px;color:var(--aqua);margin:4px 0 0;" id="fb-status">⏳ Conectando tempo real...</p>
       </div>
       <div class="grid2" style="margin-bottom:14px;">
         <div class="metric-sm">
@@ -873,16 +899,42 @@ body{font-family:var(--body);color:var(--cream);-webkit-font-smoothing:antialias
         <div class="kv"><span class="k">Sobrevivência</span><span class="v ok" id="bio-r-sobrev">—</span></div>
       </div>
       <div class="card2" style="background:rgba(249,115,22,.08);border-color:rgba(249,115,22,.2);margin-bottom:12px;">
-        <div class="label" style="color:var(--orange);">🎯 Previsão de abate</div>
-        <div class="grid2" style="margin-bottom:8px;">
-          <div>
-            <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">Peso alvo (g)</div>
-            <input class="inp" id="bio-peso-alvo" inputmode="numeric" placeholder="800" oninput="calcPrevisao()" style="min-height:46px;font-size:16px;"/>
+        <div class="label" style="color:var(--orange);margin-bottom:12px;">🎯 Previsão de abate</div>
+        
+        <!-- Opção 1: Por peso alvo -->
+        <div style="margin-bottom:12px;">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">📊 Por peso alvo</div>
+          <div class="grid2">
+            <div>
+              <div style="font-size:10px;color:var(--muted);margin-bottom:3px;">Peso alvo (g)</div>
+              <input class="inp" id="bio-peso-alvo" inputmode="numeric" placeholder="800" oninput="calcPrevisao()" style="min-height:46px;font-size:16px;"/>
+            </div>
+            <div>
+              <div style="font-size:10px;color:var(--muted);margin-bottom:3px;">Data estimada</div>
+              <div class="inp" style="min-height:46px;display:flex;align-items:center;font-size:12px;font-weight:700;color:var(--orange);" id="bio-r-prev">—</div>
+            </div>
           </div>
-          <div>
-            <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">Estimativa</div>
-            <div class="inp" style="min-height:46px;display:flex;align-items:center;font-size:13px;font-weight:700;color:var(--orange);" id="bio-r-prev">—</div>
+        </div>
+
+        <!-- Opção 2: Por data alvo -->
+        <div style="margin-bottom:12px;">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">📅 Por data alvo</div>
+          <div class="grid2">
+            <div>
+              <div style="font-size:10px;color:var(--muted);margin-bottom:3px;">Data alvo</div>
+              <input class="inp" id="bio-data-alvo" type="date" oninput="calcPrevisaoPorData()" style="min-height:46px;font-size:13px;"/>
+            </div>
+            <div>
+              <div style="font-size:10px;color:var(--muted);margin-bottom:3px;">Peso estimado</div>
+              <div class="inp" style="min-height:46px;display:flex;align-items:center;font-size:12px;font-weight:700;color:var(--aqua);" id="bio-r-prev-data">—</div>
+            </div>
           </div>
+        </div>
+
+        <!-- Análise de risco -->
+        <div id="bio-risco-wrap" style="display:none;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.2);border-radius:10px;padding:10px 12px;">
+          <div style="font-size:11px;font-weight:700;color:var(--bad);margin-bottom:6px;">⚠️ Análise de risco</div>
+          <div id="bio-risco-content" style="font-size:12px;color:var(--muted);line-height:1.6;"></div>
         </div>
       </div>
       <div class="card2" style="margin-bottom:12px;">
@@ -1190,25 +1242,48 @@ document.querySelectorAll('[data-today-short]').forEach(el => el.textContent = t
 // ============================================================
 let db;
 const DB_NAME = 'psl_v2';
-const DB_VER = 3;
+const DB_VER = 4;
 
 function initDB(){
   return new Promise((res,rej) => {
     const req = indexedDB.open(DB_NAME, DB_VER);
     req.onupgradeneeded = e => {
       const d = e.target.result;
-      const stores = ['arr','lotes','hidrico','bio','sync_q'];
+      const stores = ['arr','lotes','hidrico','bio','sync_q','fotos_q'];
       stores.forEach(s => {
         if(!d.objectStoreNames.contains(s))
           d.createObjectStore(s,{keyPath:'id',autoIncrement:true});
       });
     };
-    req.onsuccess = e => { db=e.target.result; res(db); };
+    req.onsuccess = e => { 
+      db = e.target.result;
+      // Verifica se todos os stores existem
+      const stores = ['arr','lotes','hidrico','bio','sync_q','fotos_q'];
+      const missing = stores.filter(s => !db.objectStoreNames.contains(s));
+      if(missing.length > 0){
+        console.log('Stores faltando:', missing, '— recriando banco...');
+        db.close();
+        indexedDB.deleteDatabase(DB_NAME);
+        setTimeout(() => initDB().then(res).catch(rej), 300);
+        return;
+      }
+      res(db); 
+    };
     req.onerror = e => {
-      // Se falhar, tenta deletar e recriar
-      console.error('DB erro, tentando recriar...');
+      console.error('DB erro:', e);
       indexedDB.deleteDatabase(DB_NAME);
-      setTimeout(() => initDB().then(res).catch(rej), 500);
+      setTimeout(() => {
+        const req2 = indexedDB.open(DB_NAME, DB_VER);
+        req2.onupgradeneeded = e => {
+          const d = e.target.result;
+          ['arr','lotes','hidrico','bio','sync_q','fotos_q'].forEach(s => {
+            if(!d.objectStoreNames.contains(s))
+              d.createObjectStore(s,{keyPath:'id',autoIncrement:true});
+          });
+        };
+        req2.onsuccess = e => { db=e.target.result; res(db); };
+        req2.onerror = rej;
+      }, 500);
     };
   });
 }
@@ -1228,7 +1303,7 @@ function updateNet(){
   });
   if(on) syncQueue();
 }
-window.addEventListener('online', () => { updateNet(); syncFotosQueue(); });
+window.addEventListener('online', () => { updateNet(); syncFotosQueue(); iniciarFirebase(); });
 window.addEventListener('offline', updateNet);
 updateNet();
 
@@ -1621,7 +1696,7 @@ async function salvarArracamento(){
   updateDash();
   toast('Arraçoamento '+getCageArrCount(curCage)+'º salvo! ✅');
   await atualizarRacaoLote(curCage, kg);
-  if(navigator.onLine) syncQueue();
+  if(navigator.onLine){ syncQueue(); publicarNoFirebase({...rec, id: arrDia[arrDia.length-1]?.id || Date.now()}); }
   } catch(err){ console.error('salvarArr erro:', err); toast('Erro: '+err.message, true); }
 }
 
@@ -1867,22 +1942,109 @@ function calcBio(){
   calcPrevisao(media);
 }
 
-function calcPrevisao(mediaAtual){
-  const alvo = parseFloat(document.getElementById('bio-peso-alvo')?.value)||0;
-  const media = mediaAtual||(bioAmostras.length>0?bioAmostras.reduce((a,b)=>a+b,0)/bioAmostras.length:0);
+function getMediaAtual(){
+  return bioAmostras.length>0 ? bioAmostras.reduce((a,b)=>a+b,0)/bioAmostras.length : 0;
+}
+
+function getGPD(){
+  const media = getMediaAtual();
   const pi = parseFloat(document.getElementById('lote-pinicial')?.value)||0;
   const dataP = document.getElementById('lote-data')?.value;
+  if(!media||!pi||!dataP) return 0;
+  const dias = Math.floor((Date.now()-new Date(dataP).getTime())/86400000);
+  return dias > 0 ? (media-pi)/dias : 0;
+}
+
+function calcPrevisao(mediaAtual){
+  const alvo = parseFloat(document.getElementById('bio-peso-alvo')?.value)||0;
+  const media = mediaAtual||getMediaAtual();
+  const gpd = getGPD();
   const el = document.getElementById('bio-r-prev');
   if(!el) return;
-  if(!alvo||!media||!pi||!dataP){ el.textContent='—'; return; }
-  const dias = Math.floor((Date.now()-new Date(dataP).getTime())/86400000);
-  const gpd = (media-pi)/dias;
-  if(gpd<=0){ el.textContent='Sem dados'; return; }
+  if(!alvo||!media||gpd<=0){ el.textContent='—'; return; }
   const diasR = Math.ceil((alvo-media)/gpd);
-  if(diasR<=0){ el.textContent='Pronto para abate! 🎣'; el.style.color='var(--ok)'; return; }
-  const dataAbate = new Date(); dataAbate.setDate(dataAbate.getDate()+diasR);
+  if(diasR<=0){
+    el.textContent='Pronto para abate! 🎣';
+    el.style.color='var(--ok)';
+    calcAnaliseRisco(0, alvo, media, gpd);
+    return;
+  }
+  const dataAbate = new Date();
+  dataAbate.setDate(dataAbate.getDate()+diasR);
   el.textContent = diasR+' dias ('+dataAbate.toLocaleDateString('pt-BR')+')';
   el.style.color='var(--orange)';
+  calcAnaliseRisco(diasR, alvo, media, gpd);
+  // Atualiza previsão por data se tiver data alvo
+  calcPrevisaoPorData();
+}
+
+function calcPrevisaoPorData(){
+  const dataAlvoStr = document.getElementById('bio-data-alvo')?.value;
+  const el = document.getElementById('bio-r-prev-data');
+  if(!el) return;
+  if(!dataAlvoStr){ el.textContent='—'; return; }
+  const media = getMediaAtual();
+  const gpd = getGPD();
+  if(!media||gpd<=0){ el.textContent='Sem dados suficientes'; return; }
+  const diasAte = Math.floor((new Date(dataAlvoStr)-new Date())/86400000);
+  if(diasAte<=0){ el.textContent='Data no passado'; return; }
+  const pesoEstimado = media + (gpd * diasAte);
+  const alvo = parseFloat(document.getElementById('bio-peso-alvo')?.value)||800;
+  if(pesoEstimado >= alvo){
+    el.textContent = pesoEstimado.toFixed(0)+'g ✅ Atingirá o alvo!';
+    el.style.color='var(--ok)';
+  } else {
+    const diff = alvo - pesoEstimado;
+    el.textContent = pesoEstimado.toFixed(0)+'g ⚠️ Faltarão '+diff.toFixed(0)+'g';
+    el.style.color='var(--warn)';
+  }
+  calcAnaliseRisco(diasAte, alvo, media, gpd);
+}
+
+function calcAnaliseRisco(diasRestantes, alvo, media, gpd){
+  const wrap = document.getElementById('bio-risco-wrap');
+  const cont = document.getElementById('bio-risco-content');
+  if(!wrap||!cont) return;
+  
+  const qtd = parseInt(document.getElementById('lote-qtd')?.value)||0;
+  const pesoNoAlvo = media + (gpd * diasRestantes);
+  const faltaParaAlvo = alvo - pesoNoAlvo;
+  
+  // Consumo diário estimado (2% da biomassa)
+  const biomasseAtual = (media * qtd) / 1000;
+  const consumoDiario = biomasseAtual * 0.02; // 2% biomassa/dia
+  
+  let html = '';
+  
+  if(faltaParaAlvo > 0 && diasRestantes > 0){
+    // Não vai atingir no prazo
+    const diasExtra = Math.ceil(faltaParaAlvo / gpd);
+    const racaoExtra = consumoDiario * diasExtra;
+    html += `🔴 <b>Não atingirá ${alvo}g no prazo</b><br>`;
+    html += `→ Atraso estimado: <b>${diasExtra} dias</b><br>`;
+    html += `→ Ração extra necessária: <b>${racaoExtra.toFixed(1)} kg</b><br>`;
+    html += `→ Consumo diário estimado: <b>${consumoDiario.toFixed(1)} kg/dia</b>`;
+    wrap.style.display = 'block';
+    wrap.style.background = 'rgba(248,113,113,.08)';
+    wrap.style.borderColor = 'rgba(248,113,113,.2)';
+    cont.querySelector ? null : null;
+    cont.innerHTML = html;
+    document.querySelector('#bio-risco-wrap div[style*="color:var(--bad)"]') && 
+      (document.querySelector('#bio-risco-wrap div[style*="color:var(--bad)"]').style.color = 'var(--bad)');
+  } else if(diasRestantes > 0){
+    // Vai atingir antes do prazo
+    const diasSobra = diasRestantes - Math.ceil((alvo-media)/gpd);
+    const racaoEconomia = consumoDiario * diasSobra;
+    html += `✅ <b>Atingirá ${alvo}g antes do prazo!</b><br>`;
+    html += `→ Dias de antecedência: <b>${diasSobra} dias</b><br>`;
+    html += `→ Consumo estimado até lá: <b>${(consumoDiario * Math.ceil((alvo-media)/gpd)).toFixed(1)} kg</b>`;
+    wrap.style.display = 'block';
+    wrap.style.background = 'rgba(52,211,153,.08)';
+    wrap.style.borderColor = 'rgba(52,211,153,.2)';
+    cont.innerHTML = html;
+  } else {
+    wrap.style.display = 'none';
+  }
 }
 
 async function buscarDadosLote(val){
@@ -2396,7 +2558,7 @@ async function salvarLote(){
 
     // Envia pro Sheets
     await dbAdd('sync_q', {data: rec, tipo: 'lote', ts: Date.now()});
-    if(navigator.onLine) syncQueue();
+    if(navigator.onLine){ syncQueue(); publicarLoteFirebase(rec); }
 
     toast('Lote cadastrado! ✅');
     setTimeout(() => navTo('v-gaiolas'), 1200);
@@ -2455,6 +2617,8 @@ async function atualizarRacaoLote(cageId, kg){
 // ===================== SYNC FILA DE FOTOS =====================
 async function syncFotosQueue(){
   if(!navigator.onLine || !db) return;
+  // Verifica se o store existe antes de usar
+  if(!db.objectStoreNames.contains('fotos_q')) return;
   try {
     const queue = await dbGetAll('fotos_q');
     if(!queue.length) return;
@@ -2495,6 +2659,75 @@ async function syncFotosQueue(){
   } catch(e){ console.error('syncFotosQueue:', e); }
 }
 
+
+// ============================================================
+// FIREBASE — SYNC EM TEMPO REAL
+// ============================================================
+let fbIniciado = false;
+const SITIO_ID = 'sitio_santa_luzia';
+
+async function iniciarFirebase(){
+  if(fbIniciado || !window.fbOn) return;
+  fbIniciado = true;
+  
+  // Escuta arraçoamentos do dia em tempo real
+  const hoje = dateKey();
+  window.fbOn(`${SITIO_ID}/arr/${hoje}`, async (data) => {
+    if(!data) return;
+    // Atualiza dados locais com o que veio do Firebase
+    let mudou = false;
+    Object.values(data).forEach(arr => {
+      if(!arrDia.some(a => a.id === arr.id)){
+        arrDia.push(arr);
+        mudou = true;
+      }
+    });
+    if(mudou){
+      updateDash();
+      renderMap();
+      // Notifica
+      const total = Object.keys(data).length;
+      const el = document.getElementById('fb-status');
+      if(el) el.textContent = '🔄 ' + total + ' arraç. hoje (tempo real)';
+    }
+  });
+
+  // Escuta lotes em tempo real
+  window.fbOn(`${SITIO_ID}/lotes`, (data) => {
+    if(!data) return;
+    Object.values(data).forEach(lote => {
+      if(lote.status === 'ativo'){
+        lotes[lote.cage_id] = lote;
+      }
+    });
+  });
+  
+  console.log('Firebase conectado!');
+}
+
+// Publica arraçoamento no Firebase
+async function publicarNoFirebase(rec){
+  if(!window.fbSet || !navigator.onLine) return;
+  try {
+    const hoje = dateKey();
+    await window.fbUpdate(`${SITIO_ID}/arr/${hoje}/${rec.id}`, {
+      ...rec,
+      _ts: Date.now()
+    });
+  } catch(e){ console.log('Firebase pub erro:', e); }
+}
+
+// Publica lote no Firebase  
+async function publicarLoteFirebase(rec){
+  if(!window.fbSet || !navigator.onLine) return;
+  try {
+    await window.fbUpdate(`${SITIO_ID}/lotes/${rec.cage_id}`, {
+      ...rec,
+      _ts: Date.now()
+    });
+  } catch(e){ console.log('Firebase lote erro:', e); }
+}
+
 // ============================================================
 // INIT
 // ============================================================
@@ -2510,6 +2743,8 @@ async function init(){
   setInterval(buscarClima, 15*60*1000);
   // Sincroniza fotos pendentes se online
   if(navigator.onLine) setTimeout(syncFotosQueue, 3000);
+  // Inicia Firebase após 1s
+  setTimeout(iniciarFirebase, 1000);
 }
 
 init();
