@@ -1214,10 +1214,7 @@ window.rtdb = rtdb;
 const WEBHOOK = 'https://script.google.com/macros/s/AKfycbw_eRG-JsMqHE7rDuI6ZBQZaztJVI-HKK6z7PW91WR-7PiZmD-nlchKkZgIea3H1967/exec';
 const CHAVE = 'AQUALUZIA2026';
 const OW_KEY = '2dcbc9d5a08fe7a9abbedd560a7d2261';
-const DRIVE_CLIENT_ID = '349032365119-qkj9clfmpsrrrsjbv6gc9q83cbs8al8p.apps.googleusercontent.com';
 const DRIVE_PASTA_ID = '1dCbTHQVZEL-ncLN5461kbWPJ8TP5AErq';
-let driveAccessToken = null;
-let driveTokenExpiry = 0;
 const TOTAL = 80;
 const SETORES = {A:[1,16],B:[17,32],C:[33,48],D:[49,64],E:[65,80]};
 const NOMES = ['Leticia','Kadu','Dorival','Elisangela','Agnaldo','Choo'];
@@ -2175,159 +2172,37 @@ function handlePhotoBio(input){
 }
 
 // ===================== GOOGLE DRIVE API =====================
-async function getDriveToken(){
-  // Verifica se token ainda é válido
-  if(driveAccessToken && Date.now() < driveTokenExpiry){
-    return driveAccessToken;
-  }
-  return new Promise((resolve, reject) => {
-    const client = google.accounts.oauth2.initTokenClient({
-      client_id: DRIVE_CLIENT_ID,
-      scope: 'https://www.googleapis.com/auth/drive.file',
-      callback: (resp) => {
-        if(resp.error){ reject(resp.error); return; }
-        driveAccessToken = resp.access_token;
-        driveTokenExpiry = Date.now() + (resp.expires_in * 1000) - 60000;
-        resolve(driveAccessToken);
-      }
-    });
-    client.requestAccessToken();
-  });
-}
 
-async function criarPastaDrive(nomePasta, token){
-  // Verifica se pasta já existe
-  const query = encodeURIComponent(`name='${nomePasta}' and '${DRIVE_PASTA_ID}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`);
-  const check = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}`, {
-    headers: { Authorization: 'Bearer ' + token }
-  });
-  const checkData = await check.json();
-  if(checkData.files && checkData.files.length > 0){
-    return checkData.files[0].id;
-  }
-  // Cria pasta
-  const r = await fetch('https://www.googleapis.com/drive/v3/files', {
-    method: 'POST',
-    headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      name: nomePasta,
-      mimeType: 'application/vnd.google-apps.folder',
-      parents: [DRIVE_PASTA_ID]
-    })
-  });
-  const d = await r.json();
-  return d.id;
-}
+
 
 async function uploadFoto(b64, nome, cageId){
   toast('Foto salva! ✅');
-  // Upload pro Drive desabilitado temporariamente
-  return;
   if(!navigator.onLine){
-  
+    try {
+      if(db && db.objectStoreNames.contains('fotos_q')){
+        await dbAdd('fotos_q', {b64, nome, cageId, data: dateKey(), ts: Date.now()});
+      }
+    } catch(e){ console.log('fotos_q erro:', e); }
+    return;
+  }
   setTimeout(async () => {
     try {
-      toast('Obtendo acesso ao Drive...');
-      const token = await getDriveToken();
-      if(!token){ toast('Erro de autenticação', true); return; }
-      
-      toast('Criando pasta...');
-      const pastaDataId = await criarPastaDrive(dateKey(), token);
-      if(!pastaDataId){ toast('Erro ao criar pasta', true); return; }
-      
-      toast('Enviando foto...');
-      // Converte base64 para blob
-      const base64Data = b64.includes(',') ? b64.split(',')[1] : b64;
-      const byteChars = atob(base64Data);
-      const byteArr = new Uint8Array(byteChars.length);
-      for(let i=0; i<byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
-      const blob = new Blob([byteArr], {type: 'image/jpeg'});
-      
-      // Passo 1: Cria o arquivo com metadata
-      const metaResp = await fetch('https://www.googleapis.com/drive/v3/files', {
-        method: 'POST',
-        headers: {
-          Authorization: 'Bearer ' + token,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ name: nome, parents: [pastaDataId] })
+      const payload = {
+        chave: CHAVE, tipo: 'foto',
+        data: { base64: b64, nome, cage_id: cageId, data: dateKey(), pasta: DRIVE_PASTA_ID }
+      };
+      await fetch(WEBHOOK, {
+        method: 'POST', mode: 'no-cors',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
       });
-      
-      if(!metaResp.ok){
-        const errText = await metaResp.text();
-        console.error('Criar arquivo erro:', metaResp.status, errText);
-        toast('Erro ao criar arquivo: ' + metaResp.status, true);
-        return;
-      }
-      
-      const metaData = await metaResp.json();
-      console.log('Arquivo criado:', metaData.id);
-      
-      // Passo 2: Faz upload do conteúdo
-      const uploadResp = await fetch(
-        `https://www.googleapis.com/upload/drive/v3/files/${metaData.id}?uploadType=media`,
-        {
-          method: 'PATCH',
-          headers: {
-            Authorization: 'Bearer ' + token,
-            'Content-Type': 'image/jpeg'
-          },
-          body: blob
-        }
-      );
-      
-      if(!uploadResp.ok){
-        const errText = await uploadResp.text();
-        console.error('Upload conteúdo erro:', uploadResp.status, errText);
-        toast('Erro no upload: ' + uploadResp.status, true);
-        return;
-      }
-      
-      const uploadData = await uploadResp.json();
-      uploadData.id = metaData.id;
-      console.log('Upload OK:', uploadData);
-      
-      if(uploadData.id){
-        // Torna público para visualização
-        await fetch(
-          `https://www.googleapis.com/drive/v3/files/${uploadData.id}/permissions`,
-          {
-            method: 'POST',
-            headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ role: 'reader', type: 'anyone' })
-          }
-        );
-        
-        // Salva link na planilha
-        const linkFoto = uploadData.webViewLink || `https://drive.google.com/file/d/${uploadData.id}/view`;
-        const payloadFoto = {
-          chave: CHAVE,
-          tipo: 'foto',
-          data: { data: dateKey(), cage_id: cageId, nome, link: linkFoto }
-        };
-        const dados = encodeURIComponent(JSON.stringify(payloadFoto));
-        const img = new Image();
-        img.src = WEBHOOK + '?payload=' + dados;
-        
-        toast('Foto no Drive! 📷✅');
-        console.log('Foto enviada:', linkFoto);
-      } else {
-        console.error('Upload sem ID:', uploadData);
-        toast('Erro no upload', true);
-      }
+      toast('Foto enviada! 📷✅');
     } catch(err){
       console.error('uploadFoto erro:', err);
-      toast('Erro: ' + err.message, true);
+      toast('Foto salva localmente');
     }
-  }, 200);
+  }, 300);
 }
-
-// ============================================================
-// LOTE MODAL
-// ============================================================
-function showLoteModal(){ document.getElementById('modal-lote').classList.remove('hidden'); }
-function hideLote(){ document.getElementById('modal-lote').classList.add('hidden'); }
-
 async function preencherLote(){
   const sector = document.querySelector('#lote-sector-chips .chip.on')?.dataset.ls||'A';
   const kg = parseFloat(document.getElementById('lote-kg').value)||0;
@@ -2630,44 +2505,28 @@ async function atualizarRacaoLote(cageId, kg){
 
 // ===================== SYNC FILA DE FOTOS =====================
 async function syncFotosQueue(){
+  // Fotos são enviadas via Apps Script - não precisa de Drive API
   if(!navigator.onLine || !db) return;
-  // Verifica se o store existe antes de usar
   if(!db.objectStoreNames.contains('fotos_q')) return;
   try {
     const queue = await dbGetAll('fotos_q');
     if(!queue.length) return;
-    toast('Enviando ' + queue.length + ' foto(s) pendente(s)...');
     for(const item of queue){
       try {
-        const token = await getDriveToken();
-        if(!token) break;
-        const pastaDataId = await criarPastaDrive(item.data, token);
-        const base64Data = item.b64.includes(',') ? item.b64.split(',')[1] : item.b64;
-        const byteChars = atob(base64Data);
-        const byteArr = new Uint8Array(byteChars.length);
-        for(let i=0; i<byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
-        const blob = new Blob([byteArr], {type: 'image/jpeg'});
-        const metaResp = await fetch('https://www.googleapis.com/drive/v3/files', {
+        const payload = {
+          chave: CHAVE,
+          tipo: 'foto',
+          data: { base64: item.b64, nome: item.nome, cage_id: item.cageId, data: item.data, pasta: DRIVE_PASTA_ID }
+        };
+        await fetch(WEBHOOK, {
           method: 'POST',
-          headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: item.nome, parents: [pastaDataId] })
+          mode: 'no-cors',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(payload)
         });
-        if(!metaResp.ok) continue;
-        const metaData = await metaResp.json();
-        await fetch(`https://www.googleapis.com/upload/drive/v3/files/${metaData.id}?uploadType=media`, {
-          method: 'PATCH',
-          headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'image/jpeg' },
-          body: blob
-        });
-        // Remove da fila
         const tx = db.transaction('fotos_q','readwrite');
         tx.objectStore('fotos_q').delete(item.id);
-        // Registra no Sheets
-        const linkFoto = `https://drive.google.com/file/d/${metaData.id}/view`;
-        const pf = { chave:CHAVE, tipo:'foto', data:{ data:item.data, cage_id:item.cageId, nome:item.nome, link:linkFoto } };
-        const img = new Image();
-        img.src = WEBHOOK + '?payload=' + encodeURIComponent(JSON.stringify(pf));
-      } catch(e){ console.error('syncFoto erro:', e); }
+      } catch(e){ console.error('syncFoto item:', e); }
     }
     toast('Fotos sincronizadas! 📷✅');
   } catch(e){ console.error('syncFotosQueue:', e); }
