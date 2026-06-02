@@ -145,7 +145,7 @@ body{font-family:var(--body);color:var(--cream);-webkit-font-smoothing:antialias
 .bio-peso-tag{background:var(--surf);border:1px solid var(--line);border-radius:8px;padding:4px 10px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:5px;}
 .bio-peso-tag .x{color:var(--bad);font-size:10px;}
 </style>
-<script src="https://accounts.google.com/gsi/client" async defer></script>
+<!-- Google Identity removido - foto via Apps Script -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getDatabase, ref, set, onValue, update, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
@@ -2221,14 +2221,9 @@ async function criarPastaDrive(nomePasta, token){
 
 async function uploadFoto(b64, nome, cageId){
   toast('Foto salva! ✅');
+  // Upload pro Drive desabilitado temporariamente
+  return;
   if(!navigator.onLine){
-    // Salva na fila para enviar quando conectar
-    try {
-      await dbAdd('fotos_q', {b64, nome, cageId, data: dateKey(), ts: Date.now()});
-      toast('Offline — foto na fila! ✅');
-    } catch(e){ toast('Foto salva no celular'); }
-    return;
-  }
   
   setTimeout(async () => {
     try {
