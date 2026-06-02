@@ -2390,25 +2390,32 @@ async function buildRelatorio(){
 // ============================================================
 async function syncQueue(){
   if(!navigator.onLine||!db) return 0;
+  if(!db.objectStoreNames.contains('sync_q')) return 0;
   const queue=await dbGetAll('sync_q');
   if(!queue.length) return 0;
   let count=0;
   for(const item of queue){
     try{
-      const dados=encodeURIComponent(JSON.stringify({...item,chave:CHAVE}));
-      const url=WEBHOOK+'?payload='+dados;
-      await new Promise(res=>{
-        const img=new Image();
-        img.onload=()=>res();
-        img.onerror=()=>res();
-        img.src=url;
-        setTimeout(res,6000);
-      });
+      const payload = {...item, chave: CHAVE};
+      const dados = encodeURIComponent(JSON.stringify(payload));
+      const url = WEBHOOK+'?payload='+dados;
+      // Tenta fetch primeiro, fallback para Image
+      try {
+        await fetch(url, {method:'GET', mode:'no-cors'});
+      } catch(e){
+        await new Promise(res=>{
+          const img=new Image();
+          img.onload=()=>res();
+          img.onerror=()=>res();
+          img.src=url;
+          setTimeout(res,6000);
+        });
+      }
       const tx=db.transaction('sync_q','readwrite');
       tx.objectStore('sync_q').delete(item.id);
       count++;
-      await new Promise(r=>setTimeout(r,500));
-    }catch(e){break;}
+      await new Promise(r=>setTimeout(r,400));
+    }catch(e){ console.error('sync item erro:', e); continue; }
   }
   if(count>0){
     const el=document.getElementById('last-sync-txt');
