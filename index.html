@@ -1007,6 +1007,9 @@ window.rtdb = rtdb;
         <svg style="width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2"><use href="#ic-sync"/></svg>
         SINCRONIZAR COM SHEETS
       </button>
+      <button class="btn btn-g btn-sm" style="margin-bottom:16px;color:var(--bad);border-color:rgba(248,113,113,.3);" onclick="limparDados()">
+        🗑️ Limpar dados locais
+      </button>
       <div id="rel-sync-info" style="text-align:center;font-size:11px;color:var(--muted);margin:-10px 0 14px;" id="last-sync-rel">Nunca sincronizado</div>
 
       <!-- ALERTAS -->
@@ -2424,6 +2427,15 @@ async function syncQueue(){
     if(el2) el2.textContent='Último sync: '+nowTime();
   }
   return count;
+}
+
+function limparDados(){
+  if(confirm('Limpar TODOS os dados locais?\n\nIsso não apaga a planilha Google Sheets.')){
+    indexedDB.deleteDatabase(DB_NAME);
+    localStorage.clear();
+    toast('Banco limpo! Recarregando...');
+    setTimeout(() => location.reload(), 1000);
+  }
 }
 
 async function sincronizar(){
