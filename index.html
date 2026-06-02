@@ -1673,7 +1673,7 @@ async function salvarArracamento(){
     causa: document.getElementById('g-causa').value==='Outro' ? document.getElementById('g-causa-outro').value : document.getElementById('g-causa').value,
     gps: document.getElementById('g-gps').value,
     obs: document.getElementById('g-obs').value,
-    foto: document.getElementById('g-photo-prev').style.display!=='none' ? document.getElementById('g-photo-prev').src.substring(0,50) : '',
+    foto: '', // link preenchido após upload no Drive
     synced: false
   };
   const id = await dbAdd('arr', rec);
