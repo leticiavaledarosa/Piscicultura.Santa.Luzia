@@ -148,7 +148,7 @@ body{font-family:var(--body);color:var(--cream);-webkit-font-smoothing:antialias
 <!-- Google Identity removido - foto via Apps Script -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase, ref, set, onValue, update, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+import { getDatabase, ref, set, get, onValue, update, remove, serverTimestamp, push, query, orderByChild, equalTo } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBHhIZ55c_sfOAStquxYZ7nyZW1pfx20h0",
@@ -166,7 +166,11 @@ const rtdb = getDatabase(app);
 // Expõe funções globalmente para o app usar
 window.fbSet = (path, data) => set(ref(rtdb, path), data);
 window.fbUpdate = (path, data) => update(ref(rtdb, path), data);
+window.fbGet = (path) => get(ref(rtdb, path)).then(snap => snap.val());
 window.fbOn = (path, cb) => onValue(ref(rtdb, path), snap => cb(snap.val()));
+window.fbOff = (path) => onValue(ref(rtdb, path), () => {}, { onlyOnce: true });
+window.fbPush = (path, data) => push(ref(rtdb, path), data);
+window.fbRemove = (path) => remove(ref(rtdb, path));
 window.fbServerTime = serverTimestamp;
 window.fbRef = (path) => ref(rtdb, path);
 window.rtdb = rtdb;
@@ -1696,7 +1700,12 @@ async function salvarArracamento(){
   updateDash();
   toast('Arraçoamento '+getCageArrCount(curCage)+'º salvo! ✅');
   await atualizarRacaoLote(curCage, kg);
-  if(navigator.onLine){ syncQueue(); publicarNoFirebase({...rec, id: arrDia[arrDia.length-1]?.id || Date.now()}); }
+  // Salva no Firebase (banco principal — visível em todos os dispositivos)
+  if(navigator.onLine){
+    const fbKey = await salvarNoFirebase(rec);
+    if(fbKey) rec.fb_key = fbKey;
+    syncQueue(); // Também sincroniza com Sheets
+  }
   } catch(err){ console.error('salvarArr erro:', err); toast('Erro: '+err.message, true); }
 }
 
@@ -1835,6 +1844,7 @@ async function salvarHidrico(){
   };
   await dbAdd('hidrico', rec);
   await dbAdd('sync_q', {data:rec, tipo:'hidrico', ts:Date.now()});
+  if(navigator.onLine){ salvarHidricoFirebase(rec); syncQueue(); }
   toast('Hídrico salvo! ✅');
   // Alertas críticos
   rec.pontos.forEach(p => {
@@ -2121,10 +2131,10 @@ async function salvarBio(){
   };
   await dbAdd('bio', rec);
   await dbAdd('sync_q', {data:rec, tipo:'biometria', ts:Date.now()});
+  if(navigator.onLine){ salvarBioFirebase(rec); syncQueue(); }
   bioAmostras=[];
   renderPesos();
   toast('Biometria salva! ✅');
-  if(navigator.onLine) syncQueue();
   setTimeout(()=>navTo('v-dash'), 1500);
 }
 
@@ -2323,9 +2333,19 @@ function agendarSync(){
   alvo.setHours(23,45,0,0);
   if(agora>alvo) alvo.setDate(alvo.getDate()+1);
   const diff=alvo-agora;
-  setTimeout(()=>{
-    sincronizar();
-    setInterval(sincronizar, 24*60*60*1000);
+  const mins = Math.round(diff/60000);
+  console.log(`Sync automático agendado em ${mins} minutos`);
+  setTimeout(async ()=>{
+    console.log('Rodando sync automático 23:45...');
+    if(navigator.onLine){
+      await sincronizar();
+      console.log('Sync automático concluído!');
+    } else {
+      console.log('Offline — sync adiado');
+    }
+    setInterval(async ()=>{
+      if(navigator.onLine) await sincronizar();
+    }, 24*60*60*1000);
   }, diff);
 }
 
@@ -2447,7 +2467,7 @@ async function salvarLote(){
 
     // Envia pro Sheets
     await dbAdd('sync_q', {data: rec, tipo: 'lote', ts: Date.now()});
-    if(navigator.onLine){ syncQueue(); publicarLoteFirebase(rec); }
+    if(navigator.onLine){ salvarLoteFirebase(rec); syncQueue(); }
 
     toast('Lote cadastrado! ✅');
     setTimeout(() => navTo('v-gaiolas'), 1200);
@@ -2534,7 +2554,7 @@ async function syncFotosQueue(){
 
 
 // ============================================================
-// FIREBASE — SYNC EM TEMPO REAL
+// FIREBASE — BANCO PRINCIPAL (tempo real entre dispositivos)
 // ============================================================
 let fbIniciado = false;
 const SITIO_ID = 'sitio_santa_luzia';
@@ -2542,57 +2562,73 @@ const SITIO_ID = 'sitio_santa_luzia';
 async function iniciarFirebase(){
   if(fbIniciado || !window.fbOn) return;
   fbIniciado = true;
-  
-  // Escuta arraçoamentos do dia em tempo real
+
   const hoje = dateKey();
-  window.fbOn(`${SITIO_ID}/arr/${hoje}`, async (data) => {
+  const fbStatus = document.getElementById('fb-status');
+
+  // ---- ARRAÇOAMENTOS — escuta em tempo real ----
+  window.fbOn(`${SITIO_ID}/arr/${hoje}`, (data) => {
+    if(!data){ arrDia = []; }
+    else {
+      const novos = Object.values(data);
+      // Merge sem duplicar
+      novos.forEach(novo => {
+        if(!arrDia.some(a => a.fb_key === novo.fb_key || (a.cage_id===novo.cage_id && a.hora===novo.hora && a.kg===novo.kg))){
+          arrDia.push(novo);
+        }
+      });
+      // Atualiza existentes
+      arrDia = novos;
+    }
+    updateDash();
+    if(curView === 'v-gaiolas') renderMap();
+    if(curView === 'v-gaiola') renderArrHistorico(curCage);
+    if(fbStatus) fbStatus.textContent = '🟢 ' + arrDia.length + ' arraç. hoje · tempo real';
+  });
+
+  // ---- LOTES — escuta em tempo real ----
+  window.fbOn(`${SITIO_ID}/lotes`, (data) => {
     if(!data) return;
-    // Atualiza dados locais com o que veio do Firebase
-    let mudou = false;
-    Object.values(data).forEach(arr => {
-      if(!arrDia.some(a => a.id === arr.id)){
-        arrDia.push(arr);
-        mudou = true;
-      }
+    lotes = {};
+    Object.values(data).forEach(lote => {
+      if(lote.status === 'ativo') lotes[lote.cage_id] = lote;
     });
-    if(mudou){
-      updateDash();
-      renderMap();
-      // Notifica
-      const total = Object.keys(data).length;
-      const el = document.getElementById('fb-status');
-      if(el) el.textContent = '🔄 ' + total + ' arraç. hoje (tempo real)';
+    if(curView === 'v-gaiolas') renderMap();
+  });
+
+  // ---- HÍDRICO — escuta em tempo real ----
+  window.fbOn(`${SITIO_ID}/hidrico/${hoje}`, (data) => {
+    // Apenas para notificação visual
+    if(data && fbStatus){
+      const count = Object.keys(data).length;
+      console.log('Hídrico hoje:', count, 'registros');
     }
   });
 
-  // Escuta lotes em tempo real
-  window.fbOn(`${SITIO_ID}/lotes`, (data) => {
-    if(!data) return;
-    Object.values(data).forEach(lote => {
-      if(lote.status === 'ativo'){
-        lotes[lote.cage_id] = lote;
-      }
-    });
-  });
-  
   console.log('Firebase conectado!');
+  if(fbStatus) fbStatus.textContent = '🟢 Conectado · tempo real';
 }
 
-// Publica arraçoamento no Firebase
-async function publicarNoFirebase(rec){
-  if(!window.fbSet || !navigator.onLine) return;
+// Salva arraçoamento no Firebase (banco principal)
+async function salvarNoFirebase(rec){
+  if(!window.fbPush || !navigator.onLine) return null;
   try {
     const hoje = dateKey();
-    await window.fbUpdate(`${SITIO_ID}/arr/${hoje}/${rec.id}`, {
+    const result = await window.fbPush(`${SITIO_ID}/arr/${hoje}`, {
       ...rec,
-      _ts: Date.now()
+      _ts: Date.now(),
+      _device: navigator.userAgent.includes('Mobile') ? 'mobile' : 'desktop'
     });
-  } catch(e){ console.log('Firebase pub erro:', e); }
+    return result?.key || null;
+  } catch(e){ 
+    console.log('Firebase save erro:', e); 
+    return null;
+  }
 }
 
-// Publica lote no Firebase  
-async function publicarLoteFirebase(rec){
-  if(!window.fbSet || !navigator.onLine) return;
+// Salva lote no Firebase
+async function salvarLoteFirebase(rec){
+  if(!window.fbUpdate || !navigator.onLine) return;
   try {
     await window.fbUpdate(`${SITIO_ID}/lotes/${rec.cage_id}`, {
       ...rec,
@@ -2600,6 +2636,33 @@ async function publicarLoteFirebase(rec){
     });
   } catch(e){ console.log('Firebase lote erro:', e); }
 }
+
+// Salva hídrico no Firebase
+async function salvarHidricoFirebase(rec){
+  if(!window.fbPush || !navigator.onLine) return;
+  try {
+    const hoje = dateKey();
+    await window.fbPush(`${SITIO_ID}/hidrico/${hoje}`, {
+      ...rec,
+      _ts: Date.now()
+    });
+  } catch(e){ console.log('Firebase hidrico erro:', e); }
+}
+
+// Salva biometria no Firebase
+async function salvarBioFirebase(rec){
+  if(!window.fbPush || !navigator.onLine) return;
+  try {
+    await window.fbPush(`${SITIO_ID}/bio`, {
+      ...rec,
+      _ts: Date.now()
+    });
+  } catch(e){ console.log('Firebase bio erro:', e); }
+}
+
+// Publica arraçoamento no Firebase (compatibilidade)
+async function publicarNoFirebase(rec){ return salvarNoFirebase(rec); }
+async function publicarLoteFirebase(rec){ return salvarLoteFirebase(rec); }
 
 // ============================================================
 // INIT
