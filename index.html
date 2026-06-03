@@ -203,6 +203,7 @@ window.rtdb = rtdb;
 <symbol id="ic-scale" viewBox="0 0 24 24"><path d="M5 8h14l-2.4 11H7.4z"/><path d="M9 12h6"/><path d="M12 3v3"/><circle cx="12" cy="6" r="1.4"/></symbol>
 <symbol id="ic-activity" viewBox="0 0 24 24"><path d="M3 12h4l2.5-7 5 14L17 12h4"/></symbol>
 <symbol id="ic-cal" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M4 9h16M8 3v4M16 3v4"/></symbol>
+<symbol id="ic-lotes" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></symbol>
 <symbol id="ic-signal" viewBox="0 0 24 24"><rect x="2" y="14" width="3" height="6" rx="1" fill="currentColor" stroke="none"/><rect x="8" y="10" width="3" height="10" rx="1" fill="currentColor" stroke="none"/><rect x="14" y="6" width="3" height="14" rx="1" fill="currentColor" stroke="none"/><rect x="20" y="2" width="3" height="18" rx="1" fill="currentColor" stroke="none"/></symbol>
 </defs></svg>
 
@@ -264,6 +265,16 @@ window.rtdb = rtdb;
     <span id="sb-badge2" class="badge-off"><span class="dot"></span>OFFLINE</span>
     <span style="font-size:11px;color:var(--muted)" data-today-short></span>
   </div>
+  <!-- BARRA DE SYNC — sempre visível -->
+  <div id="sync-bar" style="background:rgba(249,115,22,.15);border-bottom:2px solid var(--orange);padding:8px 16px;display:flex;align-items:center;justify-content:space-between;flex:0 0 auto;">
+    <div>
+      <div style="font-size:11px;font-weight:800;color:var(--orange);">⚠️ SINCRONIZE COM SHEETS</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:1px;" id="sync-bar-status">Dados pendentes de envio</div>
+    </div>
+    <button onclick="sincronizar()" style="background:var(--orange);border:none;border-radius:10px;color:#1b1206;font-weight:800;font-size:13px;padding:8px 14px;cursor:pointer;">
+      🔄 SYNC
+    </button>
+  </div>
   <div class="content">
     <div class="pad" style="padding-top:8px;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
@@ -311,7 +322,7 @@ window.rtdb = rtdb;
     <div class="tab" data-view="v-gaiolas" onclick="navTo('v-gaiolas')"><svg><use href="#ic-grid"/></svg>Gaiolas</div>
     <div class="tab" data-view="v-hidrico" onclick="navTo('v-hidrico')"><svg><use href="#ic-drop"/></svg>Hídrico</div>
     <div class="tab" data-view="v-bio" onclick="navTo('v-bio')"><svg><use href="#ic-ruler"/></svg>Biometria</div>
-    <div class="tab" data-view="v-rel" onclick="navTo('v-rel')"><svg><use href="#ic-doc"/></svg>Relatório</div>
+    <div class="tab" data-view="v-modulos" onclick="navTo('v-modulos')"><svg><use href="#ic-lotes"/></svg>Módulos</div>
   </nav>
 </div>
 
@@ -319,6 +330,10 @@ window.rtdb = rtdb;
 <!-- ========== TELA 3: MAPA DE GAIOLAS ========== -->
 <div class="view" id="v-gaiolas">
   <div class="sb"><span class="badge-off"><span class="dot"></span>OFFLINE</span></div>
+  <div id="sync-bar-v-gaiolas" style="background:rgba(249,115,22,.12);border-bottom:1px solid rgba(249,115,22,.3);padding:6px 16px;display:none;align-items:center;justify-content:space-between;flex:0 0 auto;">
+    <span style="font-size:11px;font-weight:700;color:var(--orange);">⚠️ Dados não sincronizados</span>
+    <button onclick="sincronizar()" style="background:var(--orange);border:none;border-radius:8px;color:#1b1206;font-weight:800;font-size:12px;padding:6px 12px;cursor:pointer;">SYNC</button>
+  </div>
   <div class="hdr">
     <div class="hdr-top">
       <div class="back" onclick="navTo('v-dash')"><svg style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2"><use href="#ic-left"/></svg></div>
@@ -417,9 +432,12 @@ window.rtdb = rtdb;
         </select>
       </div>
 
-      <!-- 2. FASE DO LOTE -->
+      <!-- 2. FASE DO LOTE — automática do lote cadastrado -->
       <div class="field">
-        <div class="label">🐟 Fase do lote</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <div class="label" style="margin:0;">🐟 Fase do lote</div>
+          <span style="font-size:11px;color:var(--aqua);" id="g-fase-auto-lbl">automático</span>
+        </div>
         <select class="sel" id="g-fase" onchange="sugerirRacao()">
           <option value="">Selecione a fase...</option>
           <option value="Alevinagem">🥚 Alevinagem (1g–50g)</option>
@@ -431,9 +449,12 @@ window.rtdb = rtdb;
         <div id="g-fase-sugestao" style="display:none;margin-top:6px;font-size:11px;color:var(--aqua);background:rgba(45,212,191,.08);border-radius:8px;padding:6px 10px;"></div>
       </div>
 
-      <!-- 3. QUALIDADE VISUAL DA ÁGUA -->
+      <!-- 3. QUALIDADE VISUAL DA ÁGUA — replica para todas -->
       <div class="field">
-        <div class="label">🌊 Qualidade visual da água</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <div class="label" style="margin:0;">🌊 Qualidade visual da água</div>
+          <button onclick="replicarAgua()" style="background:rgba(45,212,191,.1);border:1px solid rgba(45,212,191,.3);color:var(--aqua);padding:4px 8px;border-radius:7px;font-size:10px;font-weight:700;cursor:pointer;">↩ Replicar todas</button>
+        </div>
         <select class="sel" id="g-agua-visual">
           <option value="">Selecione...</option>
           <option value="Clara">✅ Clara</option>
@@ -444,9 +465,12 @@ window.rtdb = rtdb;
         </select>
       </div>
 
-      <!-- 4. TRATADORES -->
+      <!-- 4. TRATADORES — replica para todas -->
       <div class="field">
-        <div class="label">👥 Tratadores</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <div class="label" style="margin:0;">👥 Tratadores</div>
+          <button onclick="replicarTratadores()" style="background:rgba(45,212,191,.1);border:1px solid rgba(45,212,191,.3);color:var(--aqua);padding:4px 8px;border-radius:7px;font-size:10px;font-weight:700;cursor:pointer;">↩ Replicar todas</button>
+        </div>
         <div class="grid2">
           <select class="sel" id="g-trat1">
             <option value="">Tratador 1...</option>
@@ -469,7 +493,7 @@ window.rtdb = rtdb;
         </div>
       </div>
 
-      <!-- 5. RAÇÃO -->
+      <!-- 5. RAÇÃO — sugestão automática pela fase -->
       <div class="field">
         <div class="label">🍽️ Tipo de ração</div>
         <select class="sel" id="g-racao-tipo">
@@ -489,9 +513,9 @@ window.rtdb = rtdb;
       <!-- 6. QUANTIDADE E HORÁRIO -->
       <div class="grid2" style="margin-bottom:12px;">
         <div>
-          <div class="label">⚖️ Quantidade</div>
+          <div class="label">⚖️ Quantidade (kg)</div>
           <div class="inp-suf">
-            <input class="inp" id="g-kg" inputmode="decimal" placeholder="0.0"/>
+            <input class="inp" id="g-kg" inputmode="decimal" placeholder="0.0" style="font-size:22px;font-weight:800;"/>
             <span class="suf">kg</span>
           </div>
         </div>
@@ -512,7 +536,7 @@ window.rtdb = rtdb;
       </div>
 
       <!-- 8. SOBRA -->
-      <div class="field" id="g-sobra-wrap">
+      <div class="field" id="g-sobra-wrap" style="display:none;">
         <div class="label">Sobra estimada</div>
         <div class="inp-suf">
           <input class="inp" id="g-sobra" inputmode="decimal" placeholder="0.0"/>
@@ -527,49 +551,12 @@ window.rtdb = rtdb;
           <option value="normal">✅ Normal</option>
           <option value="agitado">⚠️ Agitado</option>
           <option value="apatico">⚠️ Apático</option>
-          <option value="superficie">🔴 Na superfície (falta OD!)</option>
+          <option value="superficie">🔴 Na superfície — falta OD!</option>
           <option value="esfregando">⚠️ Esfregando nas redes</option>
         </select>
       </div>
 
-      <!-- 10. SANIDADE -->
-      <div class="field">
-        <div class="label">🔍 Sanidade</div>
-        <div class="grid2">
-          <div>
-            <div style="font-size:11px;color:var(--muted);margin-bottom:5px;">Lesões visíveis?</div>
-            <select class="sel" id="g-lesoes" style="min-height:46px;font-size:14px;">
-              <option value="nao">Não</option>
-              <option value="sim">⚠️ Sim</option>
-            </select>
-          </div>
-          <div>
-            <div style="font-size:11px;color:var(--muted);margin-bottom:5px;">Parasitas?</div>
-            <select class="sel" id="g-parasitas" style="min-height:46px;font-size:14px;">
-              <option value="nao">Não</option>
-              <option value="sim">⚠️ Sim</option>
-            </select>
-          </div>
-          <div>
-            <div style="font-size:11px;color:var(--muted);margin-bottom:5px;">Predador?</div>
-            <select class="sel" id="g-predador" style="min-height:46px;font-size:14px;">
-              <option value="nao">Não</option>
-              <option value="sim">⚠️ Sim</option>
-            </select>
-          </div>
-          <div>
-            <div style="font-size:11px;color:var(--muted);margin-bottom:5px;">Coloração?</div>
-            <select class="sel" id="g-coloracao" style="min-height:46px;font-size:14px;">
-              <option value="normal">Normal</option>
-              <option value="palida">⚠️ Pálida</option>
-              <option value="escura">⚠️ Escura</option>
-              <option value="manchas">🔴 Manchas</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      <!-- 11. MORTALIDADE -->
+      <!-- 10. MORTALIDADE -->
       <div class="field">
         <div class="label">💀 Mortalidade</div>
         <div class="grid2">
@@ -653,6 +640,10 @@ window.rtdb = rtdb;
 <!-- ========== TELA 5: HÍDRICO ========== -->
 <div class="view" id="v-hidrico">
   <div class="sb"><span class="badge-off"><span class="dot"></span>OFFLINE</span></div>
+  <div id="sync-bar-v-hidrico" style="background:rgba(249,115,22,.12);border-bottom:1px solid rgba(249,115,22,.3);padding:6px 16px;display:none;align-items:center;justify-content:space-between;flex:0 0 auto;">
+    <span style="font-size:11px;font-weight:700;color:var(--orange);">⚠️ Dados não sincronizados</span>
+    <button onclick="sincronizar()" style="background:var(--orange);border:none;border-radius:8px;color:#1b1206;font-weight:800;font-size:12px;padding:6px 12px;cursor:pointer;">SYNC</button>
+  </div>
   <div class="hdr">
     <div class="hdr-top">
       <div class="back" onclick="navTo('v-dash')"><svg style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2"><use href="#ic-left"/></svg></div>
@@ -723,7 +714,7 @@ window.rtdb = rtdb;
     <div class="tab" onclick="navTo('v-gaiolas')"><svg><use href="#ic-grid"/></svg>Gaiolas</div>
     <div class="tab on"><svg><use href="#ic-drop"/></svg>Hídrico</div>
     <div class="tab" onclick="navTo('v-bio')"><svg><use href="#ic-ruler"/></svg>Biometria</div>
-    <div class="tab" onclick="navTo('v-rel')"><svg><use href="#ic-doc"/></svg>Relatório</div>
+    <div class="tab" onclick="navTo('v-modulos')"><svg><use href="#ic-lotes"/></svg>Módulos</div>
   </nav>
 </div>
 
@@ -821,12 +812,33 @@ window.rtdb = rtdb;
         <div class="kv"><span class="k">Desvio padrão</span><span class="v" id="bio-c-dp">—</span></div>
         <div class="kv"><span class="k">Uniformidade</span><span class="v" id="bio-c-unif">—</span></div>
       </div>
-      <div class="field">
-        <div class="label">📏 Comprimento médio</div>
-        <div class="inp-suf">
-          <input class="inp" id="bio-tam" inputmode="decimal" placeholder="28.5" oninput="calcBio()"/>
-          <span class="suf">cm</span>
+      <!-- Calculadora de comprimento -->
+      <div class="card2" style="margin-bottom:12px;">
+        <div class="label">📏 Comprimento — adicionar um por um</div>
+        <div style="display:flex;gap:8px;margin-bottom:10px;">
+          <div class="inp-suf" style="flex:1;">
+            <input class="inp" id="bio-comp-inp" inputmode="decimal" placeholder="Ex: 28.5" style="font-size:18px;font-weight:800;"/>
+            <span class="suf">cm</span>
+          </div>
+          <button onclick="addComprimento()" style="background:var(--aqua);border:none;border-radius:12px;width:54px;height:52px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:0 0 auto;">
+            <svg style="width:20px;height:20px;stroke:#06231f;fill:none;stroke-width:2.5"><use href="#ic-plus"/></svg>
+          </button>
         </div>
+        <div id="bio-comp-lista" style="display:flex;flex-wrap:wrap;gap:6px;min-height:20px;margin-bottom:8px;"></div>
+        <div style="display:flex;justify-content:space-between;">
+          <span style="font-size:12px;color:var(--muted);" id="bio-comp-count">0 medições</span>
+          <span style="font-size:13px;font-weight:700;color:var(--aqua);" id="bio-comp-media">Média: —</span>
+        </div>
+        <!-- Input oculto para compatibilidade -->
+        <input type="hidden" id="bio-tam"/>
+      </div>
+
+      <!-- Sanidade peixe a peixe -->
+      <div class="card2" style="margin-bottom:12px;">
+        <div class="label" style="margin-bottom:10px;">🔬 Sanidade — registro por peixe</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">Para cada peixe da amostra, registre se observou algo anormal:</div>
+        <div id="bio-sanidade-lista" style="max-height:200px;overflow-y:auto;"></div>
+        <div style="font-size:11px;color:var(--aqua);margin-top:8px;" id="bio-sanidade-resumo">—</div>
       </div>
       <div class="field">
         <div class="label">Condição corporal</div>
@@ -895,12 +907,47 @@ window.rtdb = rtdb;
     <div class="pad" style="padding-top:10px;">
       <p class="eyebrow" style="margin-bottom:14px;">Etapa 3 — Resultados</p>
       <div class="card2" style="margin-bottom:12px;">
-        <div class="label" style="color:var(--aqua);">📊 Indicadores calculados</div>
-        <div class="kv"><span class="k">Fator K</span><span class="v aq" id="bio-r-k">—</span></div>
-        <div class="kv"><span class="k">Biomassa estimada</span><span class="v" id="bio-r-bio">—</span></div>
-        <div class="kv"><span class="k">CA acumulado</span><span class="v" id="bio-r-ca">—</span></div>
-        <div class="kv"><span class="k">Ganho diário</span><span class="v ok" id="bio-r-gpd">—</span></div>
-        <div class="kv"><span class="k">Sobrevivência</span><span class="v ok" id="bio-r-sobrev">—</span></div>
+        <div class="label" style="color:var(--aqua);margin-bottom:12px;">📊 Indicadores calculados</div>
+        
+        <div style="border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:10px;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;">
+            <span style="font-size:13px;font-weight:700;color:var(--cream);">Fator K</span>
+            <span class="v aq" id="bio-r-k">—</span>
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-top:3px;">🧮 Saúde e gordura do peixe. Ideal entre 1,5 e 2,5. Abaixo = magro, acima = bem nutrido.</div>
+        </div>
+
+        <div style="border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:10px;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;">
+            <span style="font-size:13px;font-weight:700;color:var(--cream);">Biomassa estimada</span>
+            <span class="v" id="bio-r-bio">—</span>
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-top:3px;">⚖️ Peso total dos peixes na gaiola hoje. Peso médio × quantidade de peixes.</div>
+        </div>
+
+        <div style="border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:10px;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;">
+            <span style="font-size:13px;font-weight:700;color:var(--cream);">CA acumulado</span>
+            <span class="v" id="bio-r-ca">—</span>
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-top:3px;">🍽️ Quantos kg de ração para produzir 1kg de peixe. CA 1,3 = ótimo · 1,5 = bom · acima de 2,0 = problema.</div>
+        </div>
+
+        <div style="border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:10px;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;">
+            <span style="font-size:13px;font-weight:700;color:var(--cream);">Ganho diário</span>
+            <span class="v ok" id="bio-r-gpd">—</span>
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-top:3px;">📈 Quantos gramas o peixe cresceu por dia desde o início do ciclo. Tilápia ideal: 4-6g/dia.</div>
+        </div>
+
+        <div style="padding-bottom:4px;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;">
+            <span style="font-size:13px;font-weight:700;color:var(--cream);">Sobrevivência</span>
+            <span class="v ok" id="bio-r-sobrev">—</span>
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-top:3px;">🐟 % dos peixes que ainda estão vivos desde o início. Acima de 95% = excelente.</div>
+        </div>
       </div>
       <div class="card2" style="background:rgba(249,115,22,.08);border-color:rgba(249,115,22,.2);margin-bottom:12px;">
         <div class="label" style="color:var(--orange);margin-bottom:12px;">🎯 Previsão de abate</div>
@@ -981,7 +1028,7 @@ window.rtdb = rtdb;
     <div class="tab" onclick="navTo('v-gaiolas')"><svg><use href="#ic-grid"/></svg>Gaiolas</div>
     <div class="tab" onclick="navTo('v-hidrico')"><svg><use href="#ic-drop"/></svg>Hídrico</div>
     <div class="tab on"><svg><use href="#ic-ruler"/></svg>Biometria</div>
-    <div class="tab" onclick="navTo('v-rel')"><svg><use href="#ic-doc"/></svg>Relatório</div>
+    <div class="tab" onclick="navTo('v-modulos')"><svg><use href="#ic-lotes"/></svg>Módulos</div>
   </nav>
 </div>
 
@@ -1034,7 +1081,7 @@ window.rtdb = rtdb;
     <div class="tab" onclick="navTo('v-gaiolas')"><svg><use href="#ic-grid"/></svg>Gaiolas</div>
     <div class="tab" onclick="navTo('v-hidrico')"><svg><use href="#ic-drop"/></svg>Hídrico</div>
     <div class="tab" onclick="navTo('v-bio')"><svg><use href="#ic-ruler"/></svg>Biometria</div>
-    <div class="tab on"><svg><use href="#ic-doc"/></svg>Relatório</div>
+    <div class="tab on"><svg><use href="#ic-lotes"/></svg>Módulos</div>
   </nav>
 </div>
 
@@ -1149,6 +1196,327 @@ window.rtdb = rtdb;
           Encerrar lote (despesca)
         </button>
       </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ========== TELA: MÓDULOS ========== -->
+<div class="view" id="v-modulos">
+  <div class="sb"><span class="badge-off"><span class="dot"></span>OFFLINE</span></div>
+  <div class="hdr">
+    <div class="hdr-top">
+      <div class="back" onclick="navTo('v-dash')"><svg style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2"><use href="#ic-left"/></svg></div>
+      <h1 class="h1" style="font-size:20px;">Módulos</h1>
+    </div>
+  </div>
+  <div class="content">
+    <div class="pad" style="padding-top:10px;">
+
+      <!-- SYNC — destaque máximo -->
+      <button onclick="sincronizar()" style="width:100%;background:linear-gradient(135deg,var(--orange),#ea580c);border:none;border-radius:18px;padding:18px 16px;margin-bottom:16px;display:flex;align-items:center;gap:14px;cursor:pointer;box-shadow:0 8px 24px rgba(249,115,22,.35);">
+        <div style="width:50px;height:50px;border-radius:14px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;flex:0 0 auto;">
+          <svg style="width:26px;height:26px;stroke:#fff;fill:none;stroke-width:2"><use href="#ic-sync"/></svg>
+        </div>
+        <div style="text-align:left;">
+          <div style="font-weight:900;font-size:18px;color:#fff;">SINCRONIZAR</div>
+          <div style="font-size:12px;color:rgba(255,255,255,.8);margin-top:2px;">Enviar dados para o Google Sheets</div>
+        </div>
+        <span style="margin-left:auto;font-size:11px;font-weight:700;color:rgba(255,255,255,.8);" id="mod-sync-status">Toque para sincronizar</span>
+      </button>
+
+      <!-- RELATÓRIO -->
+      <div onclick="navTo('v-rel')" style="background:var(--surf);border:1.5px solid var(--line);border-radius:18px;padding:16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;cursor:pointer;active:transform:scale(.97)">
+        <div style="width:50px;height:50px;border-radius:14px;background:rgba(249,115,22,.18);display:flex;align-items:center;justify-content:center;flex:0 0 auto;">
+          <svg style="width:24px;height:24px;stroke:var(--orange);fill:none;stroke-width:2"><use href="#ic-doc"/></svg>
+        </div>
+        <div style="flex:1;">
+          <div style="font-weight:800;font-size:16px;color:var(--cream);">Relatório do Dia</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:3px;">Progresso · alertas · pontos positivos</div>
+        </div>
+        <svg style="width:18px;height:18px;stroke:var(--muted);fill:none;stroke-width:2;flex:0 0 auto"><use href="#ic-right"/></svg>
+      </div>
+
+      <!-- LOTES — destaque -->
+      <div onclick="navTo('v-lotes-modulo')" style="background:linear-gradient(135deg,rgba(45,212,191,.12),rgba(45,212,191,.04));border:1.5px solid rgba(45,212,191,.3);border-radius:18px;padding:16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;cursor:pointer;">
+        <div style="width:50px;height:50px;border-radius:14px;background:rgba(45,212,191,.2);display:flex;align-items:center;justify-content:center;flex:0 0 auto;">
+          <svg style="width:24px;height:24px;stroke:var(--aqua);fill:none;stroke-width:2"><use href="#ic-lotes"/></svg>
+        </div>
+        <div style="flex:1;">
+          <div style="font-weight:800;font-size:16px;color:var(--cream);">Gestão de Lotes</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:3px;">Cadastrar · despesca · histórico de ciclos</div>
+        </div>
+        <svg style="width:18px;height:18px;stroke:var(--muted);fill:none;stroke-width:2;flex:0 0 auto"><use href="#ic-right"/></svg>
+      </div>
+
+      <!-- DIAGNÓSTICO — destaque -->
+      <div onclick="navTo('v-diagnostico')" style="background:linear-gradient(135deg,rgba(248,113,113,.12),rgba(248,113,113,.04));border:1.5px solid rgba(248,113,113,.3);border-radius:18px;padding:16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;cursor:pointer;">
+        <div style="width:50px;height:50px;border-radius:14px;background:rgba(248,113,113,.2);display:flex;align-items:center;justify-content:center;flex:0 0 auto;font-size:24px;">🦠</div>
+        <div style="flex:1;">
+          <div style="font-weight:800;font-size:16px;color:var(--cream);">Diagnóstico com IA</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:3px;">Foto ou descrição → identifica doenças</div>
+        </div>
+        <span class="tag" style="background:rgba(248,113,113,.2);color:var(--bad);flex:0 0 auto;">IA</span>
+      </div>
+
+      <!-- CALENDÁRIO — destaque -->
+      <div onclick="navTo('v-calendario')" style="background:linear-gradient(135deg,rgba(251,191,36,.12),rgba(251,191,36,.04));border:1.5px solid rgba(251,191,36,.3);border-radius:18px;padding:16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;cursor:pointer;">
+        <div style="width:50px;height:50px;border-radius:14px;background:rgba(251,191,36,.2);display:flex;align-items:center;justify-content:center;flex:0 0 auto;">
+          <svg style="width:24px;height:24px;stroke:var(--warn);fill:none;stroke-width:2"><use href="#ic-cal"/></svg>
+        </div>
+        <div style="flex:1;">
+          <div style="font-weight:800;font-size:16px;color:var(--cream);">Calendário</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:3px;">Biometrias pendentes · despescas previstas</div>
+        </div>
+        <svg style="width:18px;height:18px;stroke:var(--muted);fill:none;stroke-width:2;flex:0 0 auto"><use href="#ic-right"/></svg>
+      </div>
+
+    </div>
+  </div>
+  <nav class="tabbar">
+    <div class="tab" onclick="navTo('v-dash')"><svg><use href="#ic-home"/></svg>Início</div>
+    <div class="tab" onclick="navTo('v-gaiolas')"><svg><use href="#ic-grid"/></svg>Gaiolas</div>
+    <div class="tab" onclick="navTo('v-hidrico')"><svg><use href="#ic-drop"/></svg>Hídrico</div>
+    <div class="tab" onclick="navTo('v-bio')"><svg><use href="#ic-ruler"/></svg>Biometria</div>
+    <div class="tab on"><svg><use href="#ic-lotes"/></svg>Módulos</div>
+  </nav>
+</div>
+
+
+<!-- ========== TELA: MÓDULO LOTES ========== -->
+<div class="view" id="v-lotes-modulo">
+  <div class="sb"><span class="badge-off"><span class="dot"></span>OFFLINE</span></div>
+  <div class="hdr">
+    <div class="hdr-top">
+      <div class="back" onclick="navTo('v-modulos')"><svg style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2"><use href="#ic-left"/></svg></div>
+      <h1 class="h1" style="font-size:20px;">Gestão de Lotes</h1>
+    </div>
+  </div>
+  <div class="content">
+    <div class="pad" style="padding-top:10px;">
+
+      <!-- AÇÕES RÁPIDAS -->
+      <div class="btn-row" style="margin-bottom:16px;">
+        <button class="btn btn-a btn-sm" onclick="abrirCadastroLote(1)">
+          📋 Novo Lote
+        </button>
+        <button class="btn btn-p btn-sm" onclick="navTo('v-despesca')">
+          🎣 Despesca
+        </button>
+      </div>
+
+      <!-- LOTES ATIVOS -->
+      <p class="eyebrow" style="margin-bottom:10px;">Lotes ativos</p>
+      <div id="lotes-ativos-lista">
+        <p class="muted" style="font-size:13px;">Carregando...</p>
+      </div>
+
+      <!-- HISTÓRICO DE LOTES -->
+      <p class="eyebrow" style="margin:14px 0 10px;">Histórico de ciclos</p>
+      <div id="lotes-historico-lista">
+        <p class="muted" style="font-size:13px;">Nenhum ciclo encerrado ainda.</p>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ========== TELA: DESPESCA ========== -->
+<div class="view" id="v-despesca">
+  <div class="sb"><span class="badge-off"><span class="dot"></span>OFFLINE</span></div>
+  <div class="hdr">
+    <div class="hdr-top">
+      <div class="back" onclick="navTo('v-lotes-modulo')"><svg style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2"><use href="#ic-left"/></svg></div>
+      <h1 class="h1" style="font-size:20px;">Despesca</h1>
+    </div>
+  </div>
+  <div class="content">
+    <div class="pad" style="padding-top:10px;">
+
+      <!-- Seleciona gaiola -->
+      <div class="field">
+        <div class="label">🐟 Gaiola</div>
+        <input class="inp" id="desp-gaiola" inputmode="numeric" placeholder="Ex: 047" oninput="carregarDadosDespesca(this.value)" style="font-size:22px;font-weight:800;"/>
+      </div>
+
+      <!-- Resumo do ciclo -->
+      <div id="desp-resumo" style="display:none;" class="card2" style="margin-bottom:12px;">
+        <div class="label" style="color:var(--aqua);margin-bottom:8px;">📊 Resumo do ciclo</div>
+        <div class="kv"><span class="k">Data de entrada</span><span class="v" id="desp-data-entrada">—</span></div>
+        <div class="kv"><span class="k">Dias de ciclo</span><span class="v aq" id="desp-dias">—</span></div>
+        <div class="kv"><span class="k">Qtd inicial</span><span class="v" id="desp-qtd-inicial">—</span></div>
+        <div class="kv"><span class="k">Peso inicial</span><span class="v" id="desp-peso-inicial">—</span></div>
+        <div class="kv"><span class="k">Último peso médio</span><span class="v" id="desp-peso-atual">—</span></div>
+        <div class="kv"><span class="k">Ração acumulada</span><span class="v" id="desp-racao">—</span></div>
+        <div class="kv"><span class="k">CA estimado</span><span class="v" id="desp-ca">—</span></div>
+      </div>
+
+      <!-- Dados da despesca -->
+      <div id="desp-form" style="display:none;">
+        <p class="eyebrow" style="margin-bottom:10px;">Dados da despesca</p>
+
+        <div class="field">
+          <div class="label">📅 Data da despesca</div>
+          <input class="inp" id="desp-data" type="date" style="font-size:16px;"/>
+        </div>
+
+        <div class="grid2" style="margin-bottom:12px;">
+          <div>
+            <div class="label">⚖️ Peso médio final (g)</div>
+            <input class="inp" id="desp-peso-final" inputmode="decimal" placeholder="800" oninput="calcDespesca()" style="font-size:18px;font-weight:800;"/>
+          </div>
+          <div>
+            <div class="label">🐟 Qtd despescada</div>
+            <input class="inp" id="desp-qtd-final" inputmode="numeric" placeholder="8640" style="font-size:18px;font-weight:800;"/>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="label">🏭 Destino</div>
+          <select class="sel" id="desp-destino">
+            <option value="">Selecione...</option>
+            <option value="Frigorífico">🏭 Frigorífico</option>
+            <option value="Atravessador">🤝 Atravessador</option>
+            <option value="Venda direta">🛒 Venda direta</option>
+            <option value="Outro">Outro</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <div class="label">👤 Responsável</div>
+          <select class="sel" id="desp-resp">
+            <option value="">Selecione...</option>
+            <option value="Leticia">Leticia</option>
+            <option value="Kadu">Kadu</option>
+            <option value="Dorival">Dorival</option>
+            <option value="Elisangela">Elisangela</option>
+            <option value="Agnaldo">Agnaldo</option>
+            <option value="Choo">Choo</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <div class="label">📝 Observações</div>
+          <textarea class="inp ta" id="desp-obs" placeholder="Qualidade dos peixes, condições da despesca..."></textarea>
+        </div>
+
+        <!-- Resultado calculado -->
+        <div id="desp-resultado" style="display:none;background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.2);border-radius:14px;padding:14px;margin-bottom:12px;">
+          <div class="label" style="color:var(--ok);margin-bottom:8px;">✅ Resultado do ciclo</div>
+          <div class="kv"><span class="k">Biomassa despescada</span><span class="v ok" id="desp-r-biomassa">—</span></div>
+          <div class="kv"><span class="k">CA final</span><span class="v" id="desp-r-ca">—</span></div>
+          <div class="kv"><span class="k">Sobrevivência</span><span class="v ok" id="desp-r-sobrev">—</span></div>
+          <div class="kv"><span class="k">Ganho total/peixe</span><span class="v" id="desp-r-ganho">—</span></div>
+        </div>
+
+        <button class="btn btn-p" onclick="confirmarDespesca()">
+          🎣 CONFIRMAR DESPESCA
+        </button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+
+<!-- ========== TELA: DIAGNÓSTICO IA ========== -->
+<div class="view" id="v-diagnostico">
+  <div class="sb"><span class="badge-off"><span class="dot"></span>OFFLINE</span></div>
+  <div class="hdr">
+    <div class="hdr-top">
+      <div class="back" onclick="navTo('v-modulos')"><svg style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2"><use href="#ic-left"/></svg></div>
+      <h1 class="h1" style="font-size:20px;">Diagnóstico IA</h1>
+      <span class="tag" style="background:rgba(248,113,113,.14);color:var(--bad);">Beta</span>
+    </div>
+  </div>
+  <div class="content">
+    <div class="pad" style="padding-top:10px;">
+
+      <div style="background:rgba(45,212,191,.08);border:1px solid rgba(45,212,191,.2);border-radius:12px;padding:12px 14px;margin-bottom:14px;">
+        <p style="font-size:13px;color:var(--aqua);margin:0;">🤖 Descreva os sintomas ou tire uma foto do peixe. A IA vai identificar a possível doença e recomendar o tratamento.</p>
+      </div>
+
+      <!-- Gaiola -->
+      <div class="field">
+        <div class="label">🐟 Gaiola afetada</div>
+        <input class="inp" id="diag-gaiola" inputmode="numeric" placeholder="Ex: 047" style="font-size:18px;font-weight:800;"/>
+      </div>
+
+      <!-- Foto -->
+      <div class="field">
+        <div class="label">📷 Foto do peixe (opcional)</div>
+        <div class="photo-ph" id="diag-photo-ph" onclick="document.getElementById('diag-foto-input').click()">
+          <svg style="width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:2"><use href="#ic-cam"/></svg>
+          <span>Toque para tirar foto</span>
+        </div>
+        <img id="diag-photo-prev" class="photo-prev" alt=""/>
+        <input type="file" id="diag-foto-input" accept="image/*" capture="environment" style="display:none;" onchange="handlePhotoDiag(this)"/>
+      </div>
+
+      <!-- Descrição dos sintomas -->
+      <div class="field">
+        <div class="label">📝 Descreva os sintomas</div>
+        <textarea class="inp ta" id="diag-sintomas" placeholder="Ex: Peixes com manchas brancas no corpo, nadadando perto da superfície, esfregando nas redes, mortalidade aumentou..." style="min-height:120px;"></textarea>
+      </div>
+
+      <!-- Infos adicionais -->
+      <div class="grid2" style="margin-bottom:12px;">
+        <div>
+          <div class="label" style="font-size:10px;">Temp. água (°C)</div>
+          <input class="inp" id="diag-temp" inputmode="decimal" placeholder="26.5" style="min-height:46px;"/>
+        </div>
+        <div>
+          <div class="label" style="font-size:10px;">OD (mg/L)</div>
+          <input class="inp" id="diag-od" inputmode="decimal" placeholder="7.2" style="min-height:46px;"/>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="label">⚠️ Mortalidade</div>
+        <select class="sel" id="diag-mortalidade">
+          <option value="nenhuma">Nenhuma</option>
+          <option value="baixa">Baixa (1-5 peixes/dia)</option>
+          <option value="media">Média (5-20 peixes/dia)</option>
+          <option value="alta">Alta (20+ peixes/dia)</option>
+          <option value="massiva">Massiva (centenas)</option>
+        </select>
+      </div>
+
+      <button class="btn btn-p" onclick="diagnosticarIA()" id="diag-btn">
+        🤖 ANALISAR COM IA
+      </button>
+
+      <!-- Resultado da IA -->
+      <div id="diag-resultado" style="display:none;margin-top:16px;"></div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ========== TELA: CALENDÁRIO ========== -->
+<div class="view" id="v-calendario">
+  <div class="sb"><span class="badge-off"><span class="dot"></span>OFFLINE</span></div>
+  <div class="hdr">
+    <div class="hdr-top">
+      <div class="back" onclick="navTo('v-modulos')"><svg style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2"><use href="#ic-left"/></svg></div>
+      <h1 class="h1" style="font-size:20px;">Calendário</h1>
+    </div>
+  </div>
+  <div class="content">
+    <div class="pad" style="padding-top:10px;">
+
+      <!-- Biometrias pendentes -->
+      <p class="eyebrow" style="margin-bottom:10px;">📊 Biometrias pendentes</p>
+      <div id="cal-biometrias"></div>
+
+      <!-- Despescas previstas -->
+      <p class="eyebrow" style="margin:14px 0 10px;">🎣 Despescas previstas</p>
+      <div id="cal-despescas"></div>
+
+      <!-- Lotes ativos -->
+      <p class="eyebrow" style="margin:14px 0 10px;">🐟 Lotes ativos</p>
+      <div id="cal-lotes"></div>
+
     </div>
   </div>
 </div>
@@ -1340,6 +1708,10 @@ function onViewOpen(id){
   if(id==='v-hidrico'){ buildHidrico(); document.getElementById('h-hora').value=nowTime()+' (auto)'; buscarClima(); }
   if(id==='v-bio'){ document.getElementById('bio-hora').value=nowTime()+' (auto)'; preencherClimaAuto('bio-clima'); }
   if(id==='v-rel') buildRelatorio();
+  if(id==='v-lotes-modulo') buildLotesModulo();
+  if(id==='v-calendario') buildCalendario();
+  if(id==='v-diagnostico'){ diagFotoBase64=null; const prev=document.getElementById('diag-photo-prev'); const ph=document.getElementById('diag-photo-ph'); if(prev){prev.src='';prev.style.display='none';} if(ph) ph.style.display='flex'; }
+  if(id==='v-despesca'){ document.getElementById('desp-gaiola').value=''; document.getElementById('desp-resumo').style.display='none'; document.getElementById('desp-form').style.display='none'; }
 }
 
 // ============================================================
@@ -1466,6 +1838,10 @@ setInterval(buscarClima, 15*60*1000);
 // ============================================================
 let curCage = 1;
 let arrDia = []; // todos os arraçoamentos do dia em memória
+// Valores de sessão para replicar
+let sessaoAgua = '';
+let sessaoTrat1 = '';
+let sessaoTrat2 = '';
 
 async function loadArrDia(){
   const all = await dbGetAll('arr');
@@ -1522,7 +1898,9 @@ function renderMap(){
       const cnt = getCageArrCount(i);
       const temLote = !!getLote(i);
       const extra = cnt>1?`<br><span style="font-size:8px;">${cnt}x</span>`:(temLote?'':'<br><span style="font-size:7px;">+lote</span>');
-      html += `<div class="cage ${st}" data-cage="${i}" style="${!temLote?'border-color:rgba(251,191,36,.4);':''}">${String(i).padStart(3,'0')}${extra}</div>`;
+      const cageBorder = !temLote ? 'border-color:rgba(251,191,36,.4);' : st==='ok' ? '' : '';
+      const cageBg = st==='ok' ? '' : st==='warn' ? '' : st==='bad' && temLote ? 'background:rgba(45,212,191,.15);border-color:rgba(45,212,191,.4);' : '';
+      html += `<div class="cage ${st}" data-cage="${i}" style="${cageBorder}${cageBg}">${String(i).padStart(3,'0')}${extra}</div>`;
     }
     html += '</div>';
   }
@@ -1606,6 +1984,11 @@ function openCage(id){
     // Horário auto
     const hora = document.getElementById('g-hora');
     if(hora) hora.value = nowTime()+' (auto)';
+    // Aplica valores de sessão e fase do lote
+    setTimeout(() => {
+      aplicarSessao();
+      aplicarFaseLote(id);
+    }, 100);
     // GPS auto
     captureGPS('g-gps');
     // Clima auto
@@ -1714,6 +2097,50 @@ function navCage(dir){
   if(next>=1&&next<=TOTAL) openCage(next);
 }
 
+function replicarAgua(){
+  const val = document.getElementById('g-agua-visual')?.value;
+  if(!val){ toast('Selecione a qualidade da água primeiro', true); return; }
+  sessaoAgua = val;
+  toast('Qualidade da água salva para todas! ✅');
+}
+
+function replicarTratadores(){
+  const t1 = document.getElementById('g-trat1')?.value;
+  const t2 = document.getElementById('g-trat2')?.value;
+  if(!t1){ toast('Selecione o Tratador 1 primeiro', true); return; }
+  sessaoTrat1 = t1;
+  sessaoTrat2 = t2;
+  toast('Tratadores salvos para todas! ✅');
+}
+
+function aplicarSessao(){
+  // Aplica valores de sessão quando abre gaiola
+  if(sessaoAgua){
+    const sel = document.getElementById('g-agua-visual');
+    if(sel) sel.value = sessaoAgua;
+  }
+  if(sessaoTrat1){
+    const t1 = document.getElementById('g-trat1');
+    if(t1) t1.value = sessaoTrat1;
+  }
+  if(sessaoTrat2){
+    const t2 = document.getElementById('g-trat2');
+    if(t2) t2.value = sessaoTrat2;
+  }
+}
+
+function aplicarFaseLote(cageId){
+  const lote = getLote(cageId);
+  if(!lote) return;
+  const faseEl = document.getElementById('g-fase');
+  const lbl = document.getElementById('g-fase-auto-lbl');
+  if(faseEl && lote.fase){
+    faseEl.value = lote.fase;
+    if(lbl) lbl.textContent = '✅ automático do lote';
+    sugerirRacao();
+  }
+}
+
 function sugerirRacao(){
   const fase = document.getElementById('g-fase').value;
   const sugestoes = {
@@ -1776,7 +2203,7 @@ function buildHidrico(){
         </div>
         <div class="inp-suf">
           <input class="inp" id="h-p${pid}-${p.id}" inputmode="decimal" placeholder="${p.min}–${p.max}"
-            oninput="document.getElementById('hsema-p${pid}-${p.id}').textContent=getSemaH(H_PARAMS.find(x=>x.id==='${p.id}'),this.value)"
+            oninput="document.getElementById('hsema-p${pid}-${p.id}').textContent=getSemaH(H_PARAMS.find(x=>x.id==='${p.id}'),this.value); if('${p.id}'==='temp') calcComparativoTemp(${pid})"
             ${p.unit?'':'style="padding-right:14px"'}/>
           ${p.unit?`<span class="suf">${p.unit}</span>`:''}
         </div>
@@ -1879,6 +2306,7 @@ function bioNextStep(step){
   // Scroll para o topo
   const activeEl = document.getElementById('bio-e'+step);
   if(activeEl) activeEl.scrollTop = 0;
+  if(step===2) setTimeout(atualizarSanidadeLista, 200);
   if(step===3) calcBio();
 }
 
@@ -2133,7 +2561,9 @@ async function salvarBio(){
   await dbAdd('sync_q', {data:rec, tipo:'biometria', ts:Date.now()});
   if(navigator.onLine){ salvarBioFirebase(rec); syncQueue(); }
   bioAmostras=[];
+  bioComprimentos=[];
   renderPesos();
+  renderComprimentos();
   toast('Biometria salva! ✅');
   setTimeout(()=>navTo('v-dash'), 1500);
 }
@@ -2324,6 +2754,7 @@ async function sincronizar(){
   // Envia só o que está na fila — não re-enfileira
   const count = await syncQueue();
   toast(count>0 ? count+' registro(s) enviados! ✅' : 'Tudo sincronizado! ✅');
+  atualizarSyncBar();
 }
 
 // Sync automático às 23:45
@@ -2664,6 +3095,520 @@ async function salvarBioFirebase(rec){
 async function publicarNoFirebase(rec){ return salvarNoFirebase(rec); }
 async function publicarLoteFirebase(rec){ return salvarLoteFirebase(rec); }
 
+
+// ============================================================
+// MÓDULO LOTES
+// ============================================================
+async function buildLotesModulo(){
+  const lista = document.getElementById('lotes-ativos-lista');
+  const hist = document.getElementById('lotes-historico-lista');
+  if(!lista) return;
+
+  const ativos = Object.values(lotes);
+  if(!ativos.length){
+    lista.innerHTML = '<p class="muted" style="font-size:13px;">Nenhum lote ativo.</p>';
+  } else {
+    lista.innerHTML = ativos.map(l => {
+      const dias = Math.floor((Date.now()-new Date(l.data_entrada).getTime())/86400000);
+      return `<div class="acc" style="margin-bottom:8px;">
+        <div class="acc-hd">
+          <span class="num">${String(l.cage_id).padStart(3,'0')}</span>
+          <div class="ht">
+            <b>Gaiola ${String(l.cage_id).padStart(3,'0')} · ${l.fase}</b>
+            <span>${dias} dias · ${l.qtd} peixes · Entrada: ${new Date(l.data_entrada).toLocaleDateString('pt-BR')}</span>
+          </div>
+          <button onclick="abrirCadastroLote(${l.cage_id})" style="background:var(--surf);border:1px solid var(--line);color:var(--aqua);padding:5px 10px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;">Ver</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // Histórico
+  try {
+    const todos = await dbGetAll('lotes');
+    const encerrados = todos.filter(l => l.status === 'encerrado');
+    if(!encerrados.length){
+      if(hist) hist.innerHTML = '<p class="muted" style="font-size:13px;">Nenhum ciclo encerrado ainda.</p>';
+    } else {
+      if(hist) hist.innerHTML = encerrados.map(l => {
+        const dias = Math.floor((new Date(l.data_encerramento||dateKey())-new Date(l.data_entrada))/86400000);
+        return `<div class="card" style="margin-bottom:8px;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;">
+            <b>Gaiola ${String(l.cage_id).padStart(3,'0')}</b>
+            <span class="muted" style="font-size:11px;">${dias} dias de ciclo</span>
+          </div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px;">${l.fase} · ${l.qtd} peixes · ${new Date(l.data_entrada).toLocaleDateString('pt-BR')}</div>
+        </div>`;
+      }).join('');
+    }
+  } catch(e){}
+}
+
+// ============================================================
+// DESPESCA
+// ============================================================
+function carregarDadosDespesca(val){
+  const id = parseInt(val);
+  if(!id || id < 1 || id > 80) return;
+  const lote = getLote(id);
+  const resumo = document.getElementById('desp-resumo');
+  const form = document.getElementById('desp-form');
+  if(!lote){
+    if(resumo) resumo.style.display = 'none';
+    if(form) form.style.display = 'none';
+    toast('Gaiola '+String(id).padStart(3,'0')+' não tem lote ativo', true);
+    return;
+  }
+  const dias = Math.floor((Date.now()-new Date(lote.data_entrada).getTime())/86400000);
+  const setText = (elId, val) => { const el=document.getElementById(elId); if(el) el.textContent=val; };
+  setText('desp-data-entrada', new Date(lote.data_entrada).toLocaleDateString('pt-BR'));
+  setText('desp-dias', dias+' dias');
+  setText('desp-qtd-inicial', lote.qtd+' peixes');
+  setText('desp-peso-inicial', lote.peso_inicial+'g');
+  setText('desp-racao', (lote.racao_acumulada||0).toFixed(1)+' kg');
+  // Tenta pegar último peso da biometria
+  dbGetAll('bio').then(bios => {
+    const bioGaiola = bios.filter(b=>parseInt(b.gaiola)===id).sort((a,b)=>new Date(b.data)-new Date(a.data));
+    if(bioGaiola[0]) setText('desp-peso-atual', bioGaiola[0].peso+'g');
+    else setText('desp-peso-atual', '— (sem biometria)');
+    // CA estimado
+    const racao = lote.racao_acumulada||0;
+    const pesoAtual = bioGaiola[0]?.peso || lote.peso_inicial;
+    if(racao>0 && pesoAtual>lote.peso_inicial && lote.qtd>0){
+      const bioA = (pesoAtual*lote.qtd)/1000;
+      const bioI = (lote.peso_inicial*lote.qtd)/1000;
+      const ca = racao/(bioA-bioI);
+      setText('desp-ca', ca>0 ? ca.toFixed(2) : '—');
+    }
+  }).catch(()=>{});
+  if(resumo) resumo.style.display = 'block';
+  // Define data de hoje no campo
+  const dataInput = document.getElementById('desp-data');
+  if(dataInput) dataInput.value = dateKey();
+  if(form) form.style.display = 'block';
+}
+
+function calcDespesca(){
+  const pesoFinal = parseFloat(document.getElementById('desp-peso-final')?.value)||0;
+  const qtdFinal = parseInt(document.getElementById('desp-qtd-final')?.value)||0;
+  const gaiola = parseInt(document.getElementById('desp-gaiola')?.value)||0;
+  const lote = getLote(gaiola);
+  const res = document.getElementById('desp-resultado');
+  if(!pesoFinal || !qtdFinal || !lote){ if(res) res.style.display='none'; return; }
+  
+  const biomassa = (pesoFinal * qtdFinal)/1000;
+  const sobrev = ((qtdFinal/lote.qtd)*100).toFixed(1);
+  const ganhoPeixe = pesoFinal - lote.peso_inicial;
+  const racao = lote.racao_acumulada||0;
+  const bioI = (lote.peso_inicial*lote.qtd)/1000;
+  const ca = racao>0 ? (racao/(biomassa-bioI)).toFixed(2) : '—';
+
+  const setText = (id,v) => { const el=document.getElementById(id); if(el) el.textContent=v; };
+  setText('desp-r-biomassa', biomassa.toFixed(1)+' kg');
+  setText('desp-r-ca', ca+(parseFloat(ca)<1.5?' 🟢':parseFloat(ca)<2?' 🟡':' 🔴'));
+  setText('desp-r-sobrev', sobrev+'%');
+  setText('desp-r-ganho', ganhoPeixe+'g/peixe');
+  if(res) res.style.display = 'block';
+}
+
+async function confirmarDespesca(){
+  const gaiola = parseInt(document.getElementById('desp-gaiola')?.value)||0;
+  const lote = getLote(gaiola);
+  if(!lote){ toast('Selecione uma gaiola válida', true); return; }
+  const data = document.getElementById('desp-data')?.value;
+  const pesoFinal = parseFloat(document.getElementById('desp-peso-final')?.value)||0;
+  const qtdFinal = parseInt(document.getElementById('desp-qtd-final')?.value)||0;
+  if(!data||!pesoFinal||!qtdFinal){ toast('Preencha todos os campos', true); return; }
+  if(!confirm('Confirmar despesca da Gaiola '+String(gaiola).padStart(3,'0')+'?\nEsta ação encerrará o lote.')) return;
+
+  // Salva despesca
+  const rec = {
+    cage_id: gaiola, data, peso_final: pesoFinal, qtd_final: qtdFinal,
+    destino: document.getElementById('desp-destino')?.value||'',
+    resp: document.getElementById('desp-resp')?.value||'',
+    obs: document.getElementById('desp-obs')?.value||'',
+    lote_data_entrada: lote.data_entrada,
+    lote_qtd_inicial: lote.qtd,
+    lote_peso_inicial: lote.peso_inicial,
+    racao_total: lote.racao_acumulada||0,
+    biomassa: ((pesoFinal*qtdFinal)/1000).toFixed(1),
+    sobrevivencia: ((qtdFinal/lote.qtd)*100).toFixed(1)
+  };
+  await dbAdd('sync_q', {data:rec, tipo:'despesca', ts:Date.now()});
+  
+  // Encerra lote
+  lote.status = 'encerrado';
+  lote.data_encerramento = data;
+  await dbPut('lotes', lote);
+  delete lotes[gaiola];
+  if(navigator.onLine) syncQueue();
+
+  toast('Despesca registrada! 🎣✅');
+  setTimeout(()=>navTo('v-lotes-modulo'), 1500);
+}
+
+// ============================================================
+// DIAGNÓSTICO COM IA
+// ============================================================
+let diagFotoBase64 = null;
+
+function handlePhotoDiag(input){
+  const file = input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const MAX=600; let w=img.width,h=img.height;
+      if(w>MAX){h=Math.round(h*MAX/w);w=MAX;}
+      canvas.width=w;canvas.height=h;
+      canvas.getContext('2d').drawImage(img,0,0,w,h);
+      diagFotoBase64 = canvas.toDataURL('image/jpeg',0.6);
+      const prev = document.getElementById('diag-photo-prev');
+      const ph = document.getElementById('diag-photo-ph');
+      if(prev){prev.src=diagFotoBase64;prev.style.display='block';}
+      if(ph) ph.style.display='none';
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+async function diagnosticarIA(){
+  const sintomas = document.getElementById('diag-sintomas')?.value;
+  const gaiola = document.getElementById('diag-gaiola')?.value;
+  const temp = document.getElementById('diag-temp')?.value;
+  const od = document.getElementById('diag-od')?.value;
+  const mortalidade = document.getElementById('diag-mortalidade')?.value;
+
+  if(!sintomas && !diagFotoBase64){ toast('Descreva os sintomas ou tire uma foto', true); return; }
+  if(!navigator.onLine){ toast('Diagnóstico requer internet', true); return; }
+
+  const btn = document.getElementById('diag-btn');
+  const res = document.getElementById('diag-resultado');
+  if(btn){ btn.textContent='🤖 Analisando...'; btn.disabled=true; }
+  if(res){ res.style.display='none'; }
+
+  try {
+    const lote = getLote(parseInt(gaiola)||0);
+    const contexto = `Você é um especialista em piscicultura de tilápia em tanques-rede no Brasil.
+Analise os sintomas descritos e forneça um diagnóstico em português.
+
+DADOS DA GAIOLA:
+- Gaiola: ${gaiola||'não informada'}
+- Fase: ${lote?.fase||'não informada'}
+- Quantidade de peixes: ${lote?.qtd||'não informada'}
+- Temperatura da água: ${temp||'não informada'}°C
+- OD: ${od||'não informado'} mg/L
+- Mortalidade: ${mortalidade}
+
+SINTOMAS: ${sintomas||'ver foto'}
+
+Forneça:
+1. DIAGNÓSTICO PROVÁVEL (doença ou problema)
+2. CAUSAS POSSÍVEIS
+3. TRATAMENTO RECOMENDADO (produtos, doses, procedimentos)
+4. URGÊNCIA (baixa/média/alta/crítica)
+5. PREVENÇÃO FUTURA
+
+Seja objetivo e prático para um produtor rural.`;
+
+    const messages = [];
+    if(diagFotoBase64){
+      messages.push({
+        role: 'user',
+        content: [
+          { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: diagFotoBase64.split(',')[1] } },
+          { type: 'text', text: contexto }
+        ]
+      });
+    } else {
+      messages.push({ role: 'user', content: contexto });
+    }
+
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages
+      })
+    });
+    const data = await resp.json();
+    const texto = data.content?.[0]?.text || 'Não foi possível obter diagnóstico.';
+
+    if(res){
+      res.style.display = 'block';
+      res.innerHTML = `
+        <div class="card2">
+          <div class="label" style="color:var(--aqua);margin-bottom:10px;">🤖 Diagnóstico da IA</div>
+          <div style="font-size:14px;line-height:1.7;white-space:pre-wrap;color:var(--cream);">${texto}</div>
+          <div style="margin-top:12px;font-size:11px;color:var(--muted);">⚠️ Consulte sempre um médico veterinário especializado antes de tratar.</div>
+        </div>`;
+    }
+    // Salva no Firebase
+    if(navigator.onLine && window.fbPush){
+      window.fbPush(`${SITIO_ID}/diagnosticos`, {
+        gaiola, sintomas, diagnostico: texto, data: dateKey(), hora: nowTime()
+      });
+    }
+  } catch(err){
+    console.error('Diagnóstico erro:', err);
+    if(res){ res.style.display='block'; res.innerHTML='<div class="alert-card r"><div class="ai">❌</div><div><h4>Erro</h4><p>'+err.message+'</p></div></div>'; }
+  } finally {
+    if(btn){ btn.textContent='🤖 ANALISAR COM IA'; btn.disabled=false; }
+  }
+}
+
+// ============================================================
+// CALENDÁRIO
+// ============================================================
+async function buildCalendario(){
+  const hoje = new Date();
+
+  // Biometrias pendentes (gaiolas com lote mas sem biometria nos últimos 15 dias)
+  const bioCal = document.getElementById('cal-biometrias');
+  const despCal = document.getElementById('cal-despescas');
+  const lotesCal = document.getElementById('cal-lotes');
+
+  try {
+    const todasBio = await dbGetAll('bio');
+    const pendentes = [];
+    const despescasPrev = [];
+
+    Object.values(lotes).forEach(lote => {
+      const diasCiclo = Math.floor((Date.now()-new Date(lote.data_entrada).getTime())/86400000);
+      // Última biometria desta gaiola
+      const biosGaiola = todasBio.filter(b=>parseInt(b.gaiola)===lote.cage_id).sort((a,b)=>new Date(b.data)-new Date(a.data));
+      const ultimaBio = biosGaiola[0];
+      const diasSemBio = ultimaBio ? Math.floor((Date.now()-new Date(ultimaBio.data).getTime())/86400000) : diasCiclo;
+
+      if(diasSemBio >= 15){
+        pendentes.push({
+          gaiola: lote.cage_id,
+          fase: lote.fase,
+          dias: diasSemBio,
+          urgencia: diasSemBio >= 30 ? 'r' : 'y'
+        });
+      }
+
+      // Previsão de abate (se tiver biometria com ganho diário)
+      if(ultimaBio && ultimaBio.peso && lote.peso_inicial){
+        const gpd = (ultimaBio.peso - lote.peso_inicial) / diasCiclo;
+        if(gpd > 0){
+          const diasParaAbate = Math.ceil((800 - ultimaBio.peso) / gpd);
+          if(diasParaAbate > 0 && diasParaAbate <= 60){
+            const dataAbate = new Date();
+            dataAbate.setDate(dataAbate.getDate() + diasParaAbate);
+            despescasPrev.push({
+              gaiola: lote.cage_id,
+              dias: diasParaAbate,
+              data: dataAbate.toLocaleDateString('pt-BR'),
+              peso: ultimaBio.peso
+            });
+          }
+        }
+      }
+    });
+
+    // Renderiza biometrias pendentes
+    if(bioCal){
+      if(!pendentes.length){
+        bioCal.innerHTML = '<div class="alert-card g"><div class="ai">✅</div><div><h4>Tudo em dia!</h4><p>Todas as gaiolas com biometria recente.</p></div></div>';
+      } else {
+        bioCal.innerHTML = pendentes.sort((a,b)=>b.dias-a.dias).map(p => `
+          <div class="alert-card ${p.urgencia}" style="cursor:pointer;" onclick="navTo('v-bio')">
+            <div class="ai">📊</div>
+            <div>
+              <h4>Gaiola ${String(p.gaiola).padStart(3,'0')} — ${p.fase}</h4>
+              <p>${p.dias} dias sem biometria ${p.urgencia==='r'?'⚠️ URGENTE':''}</p>
+            </div>
+          </div>`).join('');
+      }
+    }
+
+    // Renderiza despescas previstas
+    if(despCal){
+      if(!despescasPrev.length){
+        despCal.innerHTML = '<p class="muted" style="font-size:13px;">Nenhuma despesca prevista nos próximos 60 dias.</p>';
+      } else {
+        despCal.innerHTML = despescasPrev.sort((a,b)=>a.dias-b.dias).map(d => `
+          <div class="alert-card g" style="cursor:pointer;" onclick="navTo('v-despesca')">
+            <div class="ai">🎣</div>
+            <div>
+              <h4>Gaiola ${String(d.gaiola).padStart(3,'0')}</h4>
+              <p>Previsão: ${d.data} (em ${d.dias} dias) · Peso atual: ${d.peso}g</p>
+            </div>
+          </div>`).join('');
+      }
+    }
+
+    // Lotes ativos
+    if(lotesCal){
+      const ativos = Object.values(lotes);
+      if(!ativos.length){
+        lotesCal.innerHTML = '<p class="muted" style="font-size:13px;">Nenhum lote ativo.</p>';
+      } else {
+        lotesCal.innerHTML = ativos.map(l => {
+          const dias = Math.floor((Date.now()-new Date(l.data_entrada).getTime())/86400000);
+          return `<div class="kv" style="border-bottom:1px solid var(--line);padding:10px 0;">
+            <span class="k">Gaiola ${String(l.cage_id).padStart(3,'0')} · ${l.fase}</span>
+            <span class="v aq">${dias} dias</span>
+          </div>`;
+        }).join('');
+      }
+    }
+  } catch(e){ console.error('Calendário erro:', e); }
+}
+
+
+// ============================================================
+// CALCULADORA DE COMPRIMENTO
+// ============================================================
+let bioComprimentos = [];
+
+function addComprimento(){
+  const inp = document.getElementById('bio-comp-inp');
+  const val = parseFloat(inp.value);
+  if(!val||val<1||val>100){ inp.style.borderColor='var(--bad)'; setTimeout(()=>inp.style.borderColor='',800); return; }
+  bioComprimentos.push(val);
+  inp.value=''; inp.focus();
+  renderComprimentos();
+  if(navigator.vibrate) navigator.vibrate(40);
+}
+
+function removeComprimento(i){ bioComprimentos.splice(i,1); renderComprimentos(); }
+
+function renderComprimentos(){
+  const wrap = document.getElementById('bio-comp-lista');
+  const count = document.getElementById('bio-comp-count');
+  const media = document.getElementById('bio-comp-media');
+  const hiddenInp = document.getElementById('bio-tam');
+  if(!wrap) return;
+  wrap.innerHTML = bioComprimentos.map((c,i)=>
+    `<span class="bio-peso-tag" onclick="removeComprimento(${i})">${c}cm <span class="x">✕</span></span>`
+  ).join('');
+  const n = bioComprimentos.length;
+  if(count) count.textContent = n+' medições';
+  if(n>0){
+    const avg = bioComprimentos.reduce((a,b)=>a+b,0)/n;
+    if(media) media.textContent = 'Média: '+avg.toFixed(1)+'cm';
+    if(hiddenInp) hiddenInp.value = avg.toFixed(1);
+  } else {
+    if(media) media.textContent = 'Média: —';
+    if(hiddenInp) hiddenInp.value = '';
+  }
+  calcBio();
+}
+
+// Enter adiciona comprimento
+document.addEventListener('keydown', e => {
+  if(e.key==='Enter'&&document.activeElement?.id==='bio-comp-inp'){ e.preventDefault(); addComprimento(); }
+});
+
+// ============================================================
+// SANIDADE PEIXE A PEIXE
+// ============================================================
+function atualizarSanidadeLista(){
+  const lista = document.getElementById('bio-sanidade-lista');
+  const resumo = document.getElementById('bio-sanidade-resumo');
+  if(!lista) return;
+  const n = bioAmostras.length;
+  if(n===0){ lista.innerHTML='<p class="muted" style="font-size:12px;">Adicione pesos na etapa anterior para registrar sanidade.</p>'; return; }
+  
+  lista.innerHTML = bioAmostras.map((peso, i) => `
+    <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);">
+      <span style="font-size:12px;font-weight:700;color:var(--muted);min-width:60px;">Peixe ${i+1} · ${peso}g</span>
+      <select id="san-${i}" style="flex:1;background:var(--bg2);border:1px solid var(--line);border-radius:8px;color:var(--cream);font-size:12px;padding:4px 8px;">
+        <option value="Normal">✅ Normal</option>
+        <option value="Lesão">⚠️ Lesão</option>
+        <option value="Parasita">⚠️ Parasita</option>
+        <option value="Coloração anormal">⚠️ Coloração</option>
+        <option value="Lesão + Parasita">🔴 Lesão+Parasita</option>
+      </select>
+    </div>`).join('');
+
+  if(resumo) resumo.textContent = n+' peixes para avaliar';
+}
+
+function getSanidadeResumo(){
+  const n = bioAmostras.length;
+  let lesoes=0, parasitas=0, normais=0;
+  for(let i=0;i<n;i++){
+    const val = document.getElementById('san-'+i)?.value||'Normal';
+    if(val==='Normal') normais++;
+    else if(val.includes('Lesão')) lesoes++;
+    else if(val.includes('Parasita')) parasitas++;
+    else lesoes++;
+  }
+  return {lesoes, parasitas, normais, total:n};
+}
+
+// ============================================================
+// COMPARATIVO TEMPERATURA AR VS ÁGUA
+// ============================================================
+function calcComparativoTemp(pid){
+  const tempAgua = parseFloat(document.getElementById(`h-p${pid}-temp`)?.value)||0;
+  const tempAr = climaAtual ? parseFloat(climaAtual.temp) : 0;
+  const comp = document.getElementById(`h-p${pid}-comp-temp`);
+  if(!comp || !tempAgua || !tempAr) return;
+  comp.style.display = 'block';
+  const diff = (tempAgua - tempAr).toFixed(1);
+  const diffEl = document.getElementById(`h-p${pid}-temp-diff`);
+  const arEl = document.getElementById(`h-p${pid}-temp-ar-val`);
+  const aguaEl = document.getElementById(`h-p${pid}-temp-agua-val`);
+  if(arEl) arEl.textContent = tempAr+'°C';
+  if(aguaEl) aguaEl.textContent = tempAgua+'°C';
+  if(diffEl){
+    const absDiff = Math.abs(parseFloat(diff));
+    diffEl.textContent = (parseFloat(diff)>0?'+':'')+diff+'°C';
+    diffEl.style.color = absDiff > 5 ? 'var(--bad)' : absDiff > 2 ? 'var(--warn)' : 'var(--ok)';
+  }
+}
+
+// ============================================================
+// FOTO NO HÍDRICO
+// ============================================================
+function handlePhotoHidrico(input, pid){
+  const file = input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const prev = document.getElementById(`h-p${pid}-photo-prev`);
+    const ph = document.getElementById(`h-p${pid}-photo-ph`);
+    if(prev){prev.src=e.target.result;prev.style.display='block';}
+    if(ph) ph.style.display='none';
+    toast('Foto do ponto '+pid+' salva! 📷');
+  };
+  reader.readAsDataURL(file);
+}
+
+// ============================================================
+// SYNC BAR — atualiza status
+// ============================================================
+async function atualizarSyncBar(){
+  if(!db || !db.objectStoreNames.contains('sync_q')) return;
+  try {
+    const queue = await dbGetAll('sync_q');
+    const bar = document.getElementById('sync-bar');
+    const status = document.getElementById('sync-bar-status');
+    if(bar){
+      if(queue.length > 0){
+        bar.style.display = 'flex';
+        if(status) status.textContent = queue.length+' registro(s) aguardando envio';
+      } else {
+        bar.style.background = 'rgba(52,211,153,.1)';
+        bar.style.borderColor = 'rgba(52,211,153,.3)';
+        bar.querySelector('div div:first-child').textContent = '✅ Tudo sincronizado!';
+        bar.querySelector('div div:last-child').textContent = 'Último sync: '+nowTime();
+        setTimeout(()=>{ bar.style.background='rgba(249,115,22,.15)'; bar.style.borderColor='var(--orange)'; }, 3000);
+      }
+    }
+  } catch(e){}
+}
+
 // ============================================================
 // INIT
 // ============================================================
@@ -2679,8 +3624,9 @@ async function init(){
   setInterval(buscarClima, 15*60*1000);
   // Sincroniza fotos pendentes se online
   if(navigator.onLine) setTimeout(syncFotosQueue, 3000);
-  // Inicia Firebase após 1s
   setTimeout(iniciarFirebase, 1000);
+  setTimeout(atualizarSyncBar, 2000);
+  setInterval(atualizarSyncBar, 60000);
 }
 
 init();
