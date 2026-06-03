@@ -3064,40 +3064,6 @@ async function salvarNoFirebase(rec){
 }
 
 // Salva lote no Firebase
-async function salvarLoteFirebase(rec){
-  if(!window.fbUpdate || !navigator.onLine) return;
-  try {
-    await window.fbUpdate(`${SITIO_ID}/lotes/${rec.cage_id}`, {
-      ...rec,
-      _ts: Date.now()
-    });
-  } catch(e){ console.log('Firebase lote erro:', e); }
-}
-
-// Salva hídrico no Firebase
-async function salvarHidricoFirebase(rec){
-  if(!window.fbPush || !navigator.onLine) return;
-  try {
-    const hoje = dateKey();
-    await window.fbPush(`${SITIO_ID}/hidrico/${hoje}`, {
-      ...rec,
-      _ts: Date.now()
-    });
-  } catch(e){ console.log('Firebase hidrico erro:', e); }
-}
-
-// Salva biometria no Firebase
-async function salvarBioFirebase(rec){
-  if(!window.fbPush || !navigator.onLine) return;
-  try {
-    await window.fbPush(`${SITIO_ID}/bio`, {
-      ...rec,
-      _ts: Date.now()
-    });
-  } catch(e){ console.log('Firebase bio erro:', e); }
-}
-
-// Publica arraçoamento no Firebase (compatibilidade)
 async function publicarNoFirebase(rec){ return salvarNoFirebase(rec); }
 async function publicarLoteFirebase(rec){ return salvarLoteFirebase(rec); }
 
@@ -3225,8 +3191,6 @@ async function confirmarDespesca(){
   const pesoFinal = parseFloat(document.getElementById('desp-peso-final')?.value)||0;
   const qtdFinal = parseInt(document.getElementById('desp-qtd-final')?.value)||0;
   if(!data||!pesoFinal||!qtdFinal){ toast('Preencha todos os campos', true); return; }
-  if(!confirm('Confirmar despesca da Gaiola '+String(gaiola).padStart(3,'0')+'?\nEsta ação encerrará o lote.')) return;
-
   // Salva despesca
   const rec = {
     cage_id: gaiola, data, peso_final: pesoFinal, qtd_final: qtdFinal,
@@ -3247,10 +3211,14 @@ async function confirmarDespesca(){
   lote.data_encerramento = data;
   await dbPut('lotes', lote);
   delete lotes[gaiola];
-  if(navigator.onLine) syncQueue();
-
+  
+  // Sincroniza e volta para o mapa
+  if(navigator.onLine) await syncQueue();
+  await loadArrDia();
+  renderMap();
+  
   toast('Despesca registrada! 🎣✅');
-  setTimeout(()=>navTo('v-lotes-modulo'), 1500);
+  setTimeout(()=>navTo('v-gaiolas'), 1500);
 }
 
 // ============================================================
@@ -3718,51 +3686,6 @@ footer{display:flex;justify-content:space-between;margin-top:20px;padding-top:12
 // ============================================================
 // MÓDULO LOTES
 // ============================================================
-async function buildLotesModulo(){
-  const lista = document.getElementById('lotes-ativos-lista');
-  const hist = document.getElementById('lotes-historico-lista');
-  if(!lista) return;
-
-  const ativos = Object.values(lotes);
-  if(!ativos.length){
-    lista.innerHTML = '<p class="muted" style="font-size:13px;">Nenhum lote ativo.</p>';
-  } else {
-    lista.innerHTML = ativos.map(l => {
-      const dias = Math.floor((Date.now()-new Date(l.data_entrada).getTime())/86400000);
-      return `<div class="acc" style="margin-bottom:8px;">
-        <div class="acc-hd">
-          <span class="num">${String(l.cage_id).padStart(3,'0')}</span>
-          <div class="ht">
-            <b>Gaiola ${String(l.cage_id).padStart(3,'0')} · ${l.fase}</b>
-            <span>${dias} dias · ${l.qtd} peixes · Entrada: ${new Date(l.data_entrada).toLocaleDateString('pt-BR')}</span>
-          </div>
-          <button onclick="abrirCadastroLote(${l.cage_id})" style="background:var(--surf);border:1px solid var(--line);color:var(--aqua);padding:5px 10px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;">Ver</button>
-        </div>
-      </div>`;
-    }).join('');
-  }
-
-  // Histórico
-  try {
-    const todos = await dbGetAll('lotes');
-    const encerrados = todos.filter(l => l.status === 'encerrado');
-    if(!encerrados.length){
-      if(hist) hist.innerHTML = '<p class="muted" style="font-size:13px;">Nenhum ciclo encerrado ainda.</p>';
-    } else {
-      if(hist) hist.innerHTML = encerrados.map(l => {
-        const dias = Math.floor((new Date(l.data_encerramento||dateKey())-new Date(l.data_entrada))/86400000);
-        return `<div class="card" style="margin-bottom:8px;">
-          <div style="display:flex;justify-content:space-between;align-items:baseline;">
-            <b>Gaiola ${String(l.cage_id).padStart(3,'0')}</b>
-            <span class="muted" style="font-size:11px;">${dias} dias de ciclo</span>
-          </div>
-          <div style="font-size:12px;color:var(--muted);margin-top:4px;">${l.fase} · ${l.qtd} peixes · ${new Date(l.data_entrada).toLocaleDateString('pt-BR')}</div>
-        </div>`;
-      }).join('');
-    }
-  } catch(e){}
-}
-
 // ============================================================
 // DESPESCA
 // ============================================================
@@ -3830,146 +3753,11 @@ function calcDespesca(){
   if(res) res.style.display = 'block';
 }
 
-async function confirmarDespesca(){
-  const gaiola = parseInt(document.getElementById('desp-gaiola')?.value)||0;
-  const lote = getLote(gaiola);
-  if(!lote){ toast('Selecione uma gaiola válida', true); return; }
-  const data = document.getElementById('desp-data')?.value;
-  const pesoFinal = parseFloat(document.getElementById('desp-peso-final')?.value)||0;
-  const qtdFinal = parseInt(document.getElementById('desp-qtd-final')?.value)||0;
-  if(!data||!pesoFinal||!qtdFinal){ toast('Preencha todos os campos', true); return; }
-  if(!confirm('Confirmar despesca da Gaiola '+String(gaiola).padStart(3,'0')+'?\nEsta ação encerrará o lote.')) return;
-
-  // Salva despesca
-  const rec = {
-    cage_id: gaiola, data, peso_final: pesoFinal, qtd_final: qtdFinal,
-    destino: document.getElementById('desp-destino')?.value||'',
-    resp: document.getElementById('desp-resp')?.value||'',
-    obs: document.getElementById('desp-obs')?.value||'',
-    lote_data_entrada: lote.data_entrada,
-    lote_qtd_inicial: lote.qtd,
-    lote_peso_inicial: lote.peso_inicial,
-    racao_total: lote.racao_acumulada||0,
-    biomassa: ((pesoFinal*qtdFinal)/1000).toFixed(1),
-    sobrevivencia: ((qtdFinal/lote.qtd)*100).toFixed(1)
-  };
-  await dbAdd('sync_q', {data:rec, tipo:'despesca', ts:Date.now()});
-  
-  // Encerra lote
-  lote.status = 'encerrado';
-  lote.data_encerramento = data;
-  await dbPut('lotes', lote);
-  delete lotes[gaiola];
-  if(navigator.onLine) syncQueue();
-
-  toast('Despesca registrada! 🎣✅');
-  setTimeout(()=>navTo('v-lotes-modulo'), 1500);
-}
-
 // ============================================================
 // DIAGNÓSTICO COM IA
 // ============================================================
 // CALENDÁRIO
 // ============================================================
-async function buildCalendario(){
-  const hoje = new Date();
-
-  // Biometrias pendentes (gaiolas com lote mas sem biometria nos últimos 15 dias)
-  const bioCal = document.getElementById('cal-biometrias');
-  const despCal = document.getElementById('cal-despescas');
-  const lotesCal = document.getElementById('cal-lotes');
-
-  try {
-    const todasBio = await dbGetAll('bio');
-    const pendentes = [];
-    const despescasPrev = [];
-
-    Object.values(lotes).forEach(lote => {
-      const diasCiclo = Math.floor((Date.now()-new Date(lote.data_entrada).getTime())/86400000);
-      // Última biometria desta gaiola
-      const biosGaiola = todasBio.filter(b=>parseInt(b.gaiola)===lote.cage_id).sort((a,b)=>new Date(b.data)-new Date(a.data));
-      const ultimaBio = biosGaiola[0];
-      const diasSemBio = ultimaBio ? Math.floor((Date.now()-new Date(ultimaBio.data).getTime())/86400000) : diasCiclo;
-
-      if(diasSemBio >= 15){
-        pendentes.push({
-          gaiola: lote.cage_id,
-          fase: lote.fase,
-          dias: diasSemBio,
-          urgencia: diasSemBio >= 30 ? 'r' : 'y'
-        });
-      }
-
-      // Previsão de abate (se tiver biometria com ganho diário)
-      if(ultimaBio && ultimaBio.peso && lote.peso_inicial){
-        const gpd = (ultimaBio.peso - lote.peso_inicial) / diasCiclo;
-        if(gpd > 0){
-          const diasParaAbate = Math.ceil((800 - ultimaBio.peso) / gpd);
-          if(diasParaAbate > 0 && diasParaAbate <= 60){
-            const dataAbate = new Date();
-            dataAbate.setDate(dataAbate.getDate() + diasParaAbate);
-            despescasPrev.push({
-              gaiola: lote.cage_id,
-              dias: diasParaAbate,
-              data: dataAbate.toLocaleDateString('pt-BR'),
-              peso: ultimaBio.peso
-            });
-          }
-        }
-      }
-    });
-
-    // Renderiza biometrias pendentes
-    if(bioCal){
-      if(!pendentes.length){
-        bioCal.innerHTML = '<div class="alert-card g"><div class="ai">✅</div><div><h4>Tudo em dia!</h4><p>Todas as gaiolas com biometria recente.</p></div></div>';
-      } else {
-        bioCal.innerHTML = pendentes.sort((a,b)=>b.dias-a.dias).map(p => `
-          <div class="alert-card ${p.urgencia}" style="cursor:pointer;" onclick="navTo('v-bio')">
-            <div class="ai">📊</div>
-            <div>
-              <h4>Gaiola ${String(p.gaiola).padStart(3,'0')} — ${p.fase}</h4>
-              <p>${p.dias} dias sem biometria ${p.urgencia==='r'?'⚠️ URGENTE':''}</p>
-            </div>
-          </div>`).join('');
-      }
-    }
-
-    // Renderiza despescas previstas
-    if(despCal){
-      if(!despescasPrev.length){
-        despCal.innerHTML = '<p class="muted" style="font-size:13px;">Nenhuma despesca prevista nos próximos 60 dias.</p>';
-      } else {
-        despCal.innerHTML = despescasPrev.sort((a,b)=>a.dias-b.dias).map(d => `
-          <div class="alert-card g" style="cursor:pointer;" onclick="navTo('v-despesca')">
-            <div class="ai">🎣</div>
-            <div>
-              <h4>Gaiola ${String(d.gaiola).padStart(3,'0')}</h4>
-              <p>Previsão: ${d.data} (em ${d.dias} dias) · Peso atual: ${d.peso}g</p>
-            </div>
-          </div>`).join('');
-      }
-    }
-
-    // Lotes ativos
-    if(lotesCal){
-      const ativos = Object.values(lotes);
-      if(!ativos.length){
-        lotesCal.innerHTML = '<p class="muted" style="font-size:13px;">Nenhum lote ativo.</p>';
-      } else {
-        lotesCal.innerHTML = ativos.map(l => {
-          const dias = Math.floor((Date.now()-new Date(l.data_entrada).getTime())/86400000);
-          return `<div class="kv" style="border-bottom:1px solid var(--line);padding:10px 0;">
-            <span class="k">Gaiola ${String(l.cage_id).padStart(3,'0')} · ${l.fase}</span>
-            <span class="v aq">${dias} dias</span>
-          </div>`;
-        }).join('');
-      }
-    }
-  } catch(e){ console.error('Calendário erro:', e); }
-}
-
-
 // ============================================================
 // CALCULADORA DE COMPRIMENTO
 // ============================================================
@@ -4122,51 +3910,6 @@ async function atualizarSyncBar(){
 // ============================================================
 // MÓDULO LOTES
 // ============================================================
-async function buildLotesModulo(){
-  const lista = document.getElementById('lotes-ativos-lista');
-  const hist = document.getElementById('lotes-historico-lista');
-  if(!lista) return;
-
-  const ativos = Object.values(lotes);
-  if(!ativos.length){
-    lista.innerHTML = '<p class="muted" style="font-size:13px;">Nenhum lote ativo.</p>';
-  } else {
-    lista.innerHTML = ativos.map(l => {
-      const dias = Math.floor((Date.now()-new Date(l.data_entrada).getTime())/86400000);
-      return `<div class="acc" style="margin-bottom:8px;">
-        <div class="acc-hd">
-          <span class="num">${String(l.cage_id).padStart(3,'0')}</span>
-          <div class="ht">
-            <b>Gaiola ${String(l.cage_id).padStart(3,'0')} · ${l.fase}</b>
-            <span>${dias} dias · ${l.qtd} peixes · Entrada: ${new Date(l.data_entrada).toLocaleDateString('pt-BR')}</span>
-          </div>
-          <button onclick="abrirCadastroLote(${l.cage_id})" style="background:var(--surf);border:1px solid var(--line);color:var(--aqua);padding:5px 10px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;">Ver</button>
-        </div>
-      </div>`;
-    }).join('');
-  }
-
-  // Histórico
-  try {
-    const todos = await dbGetAll('lotes');
-    const encerrados = todos.filter(l => l.status === 'encerrado');
-    if(!encerrados.length){
-      if(hist) hist.innerHTML = '<p class="muted" style="font-size:13px;">Nenhum ciclo encerrado ainda.</p>';
-    } else {
-      if(hist) hist.innerHTML = encerrados.map(l => {
-        const dias = Math.floor((new Date(l.data_encerramento||dateKey())-new Date(l.data_entrada))/86400000);
-        return `<div class="card" style="margin-bottom:8px;">
-          <div style="display:flex;justify-content:space-between;align-items:baseline;">
-            <b>Gaiola ${String(l.cage_id).padStart(3,'0')}</b>
-            <span class="muted" style="font-size:11px;">${dias} dias de ciclo</span>
-          </div>
-          <div style="font-size:12px;color:var(--muted);margin-top:4px;">${l.fase} · ${l.qtd} peixes · ${new Date(l.data_entrada).toLocaleDateString('pt-BR')}</div>
-        </div>`;
-      }).join('');
-    }
-  } catch(e){}
-}
-
 // ============================================================
 // DESPESCA
 // ============================================================
@@ -4234,146 +3977,11 @@ function calcDespesca(){
   if(res) res.style.display = 'block';
 }
 
-async function confirmarDespesca(){
-  const gaiola = parseInt(document.getElementById('desp-gaiola')?.value)||0;
-  const lote = getLote(gaiola);
-  if(!lote){ toast('Selecione uma gaiola válida', true); return; }
-  const data = document.getElementById('desp-data')?.value;
-  const pesoFinal = parseFloat(document.getElementById('desp-peso-final')?.value)||0;
-  const qtdFinal = parseInt(document.getElementById('desp-qtd-final')?.value)||0;
-  if(!data||!pesoFinal||!qtdFinal){ toast('Preencha todos os campos', true); return; }
-  if(!confirm('Confirmar despesca da Gaiola '+String(gaiola).padStart(3,'0')+'?\nEsta ação encerrará o lote.')) return;
-
-  // Salva despesca
-  const rec = {
-    cage_id: gaiola, data, peso_final: pesoFinal, qtd_final: qtdFinal,
-    destino: document.getElementById('desp-destino')?.value||'',
-    resp: document.getElementById('desp-resp')?.value||'',
-    obs: document.getElementById('desp-obs')?.value||'',
-    lote_data_entrada: lote.data_entrada,
-    lote_qtd_inicial: lote.qtd,
-    lote_peso_inicial: lote.peso_inicial,
-    racao_total: lote.racao_acumulada||0,
-    biomassa: ((pesoFinal*qtdFinal)/1000).toFixed(1),
-    sobrevivencia: ((qtdFinal/lote.qtd)*100).toFixed(1)
-  };
-  await dbAdd('sync_q', {data:rec, tipo:'despesca', ts:Date.now()});
-  
-  // Encerra lote
-  lote.status = 'encerrado';
-  lote.data_encerramento = data;
-  await dbPut('lotes', lote);
-  delete lotes[gaiola];
-  if(navigator.onLine) syncQueue();
-
-  toast('Despesca registrada! 🎣✅');
-  setTimeout(()=>navTo('v-lotes-modulo'), 1500);
-}
-
 // ============================================================
 // DIAGNÓSTICO COM IA
 // ============================================================
 // CALENDÁRIO
 // ============================================================
-async function buildCalendario(){
-  const hoje = new Date();
-
-  // Biometrias pendentes (gaiolas com lote mas sem biometria nos últimos 15 dias)
-  const bioCal = document.getElementById('cal-biometrias');
-  const despCal = document.getElementById('cal-despescas');
-  const lotesCal = document.getElementById('cal-lotes');
-
-  try {
-    const todasBio = await dbGetAll('bio');
-    const pendentes = [];
-    const despescasPrev = [];
-
-    Object.values(lotes).forEach(lote => {
-      const diasCiclo = Math.floor((Date.now()-new Date(lote.data_entrada).getTime())/86400000);
-      // Última biometria desta gaiola
-      const biosGaiola = todasBio.filter(b=>parseInt(b.gaiola)===lote.cage_id).sort((a,b)=>new Date(b.data)-new Date(a.data));
-      const ultimaBio = biosGaiola[0];
-      const diasSemBio = ultimaBio ? Math.floor((Date.now()-new Date(ultimaBio.data).getTime())/86400000) : diasCiclo;
-
-      if(diasSemBio >= 15){
-        pendentes.push({
-          gaiola: lote.cage_id,
-          fase: lote.fase,
-          dias: diasSemBio,
-          urgencia: diasSemBio >= 30 ? 'r' : 'y'
-        });
-      }
-
-      // Previsão de abate (se tiver biometria com ganho diário)
-      if(ultimaBio && ultimaBio.peso && lote.peso_inicial){
-        const gpd = (ultimaBio.peso - lote.peso_inicial) / diasCiclo;
-        if(gpd > 0){
-          const diasParaAbate = Math.ceil((800 - ultimaBio.peso) / gpd);
-          if(diasParaAbate > 0 && diasParaAbate <= 60){
-            const dataAbate = new Date();
-            dataAbate.setDate(dataAbate.getDate() + diasParaAbate);
-            despescasPrev.push({
-              gaiola: lote.cage_id,
-              dias: diasParaAbate,
-              data: dataAbate.toLocaleDateString('pt-BR'),
-              peso: ultimaBio.peso
-            });
-          }
-        }
-      }
-    });
-
-    // Renderiza biometrias pendentes
-    if(bioCal){
-      if(!pendentes.length){
-        bioCal.innerHTML = '<div class="alert-card g"><div class="ai">✅</div><div><h4>Tudo em dia!</h4><p>Todas as gaiolas com biometria recente.</p></div></div>';
-      } else {
-        bioCal.innerHTML = pendentes.sort((a,b)=>b.dias-a.dias).map(p => `
-          <div class="alert-card ${p.urgencia}" style="cursor:pointer;" onclick="navTo('v-bio')">
-            <div class="ai">📊</div>
-            <div>
-              <h4>Gaiola ${String(p.gaiola).padStart(3,'0')} — ${p.fase}</h4>
-              <p>${p.dias} dias sem biometria ${p.urgencia==='r'?'⚠️ URGENTE':''}</p>
-            </div>
-          </div>`).join('');
-      }
-    }
-
-    // Renderiza despescas previstas
-    if(despCal){
-      if(!despescasPrev.length){
-        despCal.innerHTML = '<p class="muted" style="font-size:13px;">Nenhuma despesca prevista nos próximos 60 dias.</p>';
-      } else {
-        despCal.innerHTML = despescasPrev.sort((a,b)=>a.dias-b.dias).map(d => `
-          <div class="alert-card g" style="cursor:pointer;" onclick="navTo('v-despesca')">
-            <div class="ai">🎣</div>
-            <div>
-              <h4>Gaiola ${String(d.gaiola).padStart(3,'0')}</h4>
-              <p>Previsão: ${d.data} (em ${d.dias} dias) · Peso atual: ${d.peso}g</p>
-            </div>
-          </div>`).join('');
-      }
-    }
-
-    // Lotes ativos
-    if(lotesCal){
-      const ativos = Object.values(lotes);
-      if(!ativos.length){
-        lotesCal.innerHTML = '<p class="muted" style="font-size:13px;">Nenhum lote ativo.</p>';
-      } else {
-        lotesCal.innerHTML = ativos.map(l => {
-          const dias = Math.floor((Date.now()-new Date(l.data_entrada).getTime())/86400000);
-          return `<div class="kv" style="border-bottom:1px solid var(--line);padding:10px 0;">
-            <span class="k">Gaiola ${String(l.cage_id).padStart(3,'0')} · ${l.fase}</span>
-            <span class="v aq">${dias} dias</span>
-          </div>`;
-        }).join('');
-      }
-    }
-  } catch(e){ console.error('Calendário erro:', e); }
-}
-
-
 // ============================================================
 // CALCULADORA DE COMPRIMENTO
 // ============================================================
