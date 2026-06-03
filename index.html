@@ -2285,7 +2285,6 @@ async function salvarHidrico(){
     if(p.od && p.od < 3) toast('⚠️ OD CRÍTICO no Ponto '+p.ponto+'!', true);
     if(p.sup==='Sim') toast('🔴 Peixes na superfície — Ponto '+p.ponto+'!', true);
   });
-  if(navigator.onLine) syncQueue();
 }
 
 // ============================================================
