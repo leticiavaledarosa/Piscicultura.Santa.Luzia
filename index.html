@@ -1213,8 +1213,28 @@ window.rtdb = rtdb;
   <div class="content">
     <div class="pad" style="padding-top:10px;">
 
-      <!-- SYNC — destaque máximo -->
-      <button onclick="sincronizar()" style="width:100%;background:linear-gradient(135deg,var(--orange),#ea580c);border:none;border-radius:18px;padding:18px 16px;margin-bottom:16px;display:flex;align-items:center;gap:14px;cursor:pointer;box-shadow:0 8px 24px rgba(249,115,22,.35);">
+      <!-- PDF E SYNC — destaque máximo -->
+      <div class="btn-row" style="margin-bottom:16px;">
+        <button onclick="gerarPDF()" style="flex:1;background:linear-gradient(135deg,#1E3D2F,#2C523F);border:none;border-radius:18px;padding:16px;display:flex;align-items:center;gap:10px;cursor:pointer;box-shadow:0 8px 24px rgba(30,61,47,.35);">
+          <div style="width:42px;height:42px;border-radius:12px;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;flex:0 0 auto;font-size:20px;">📄</div>
+          <div style="text-align:left;">
+            <div style="font-weight:900;font-size:15px;color:#fff;">GERAR PDF</div>
+            <div style="font-size:11px;color:rgba(255,255,255,.7);margin-top:1px;">Relatório do dia</div>
+          </div>
+        </button>
+        <button onclick="sincronizar()" style="flex:1;background:linear-gradient(135deg,var(--orange),#ea580c);border:none;border-radius:18px;padding:16px;display:flex;align-items:center;gap:10px;cursor:pointer;box-shadow:0 8px 24px rgba(249,115,22,.35);">
+          <div style="width:42px;height:42px;border-radius:12px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;flex:0 0 auto;">
+            <svg style="width:22px;height:22px;stroke:#fff;fill:none;stroke-width:2"><use href="#ic-sync"/></svg>
+          </div>
+          <div style="text-align:left;">
+            <div style="font-weight:900;font-size:15px;color:#fff;">SYNC</div>
+            <div style="font-size:11px;color:rgba(255,255,255,.8);margin-top:1px;" id="mod-sync-status">Sheets</div>
+          </div>
+        </button>
+      </div>
+
+      <!-- SYNC antigo oculto -->
+      <button onclick="sincronizar()" style="display:none;width:100%;background:linear-gradient(135deg,var(--orange),#ea580c);border:none;border-radius:18px;padding:18px 16px;margin-bottom:16px;display:flex;align-items:center;gap:14px;cursor:pointer;box-shadow:0 8px 24px rgba(249,115,22,.35);">
         <div style="width:50px;height:50px;border-radius:14px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;flex:0 0 auto;">
           <svg style="width:26px;height:26px;stroke:#fff;fill:none;stroke-width:2"><use href="#ic-sync"/></svg>
         </div>
@@ -1934,16 +1954,7 @@ document.addEventListener('click', e => {
   const cage = e.target.closest('[data-cage]');
   if(cage){
     const id = parseInt(cage.dataset.cage);
-    // Se não tem lote, pergunta se quer cadastrar
-    if(!getLote(id)){
-      if(confirm('Gaiola '+String(id).padStart(3,'0')+' não tem lote cadastrado.\n\nCadastrar lote agora?')){
-        abrirCadastroLote(id);
-      } else {
-        openCage(id); // abre mesmo sem lote
-      }
-    } else {
-      openCage(id);
-    }
+    openCage(id);
     return;
   }
   // Lote sector chips
@@ -3323,17 +3334,17 @@ Seja objetivo e prático para um produtor rural.`;
       messages.push({ role: 'user', content: contexto });
     }
 
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    // Envia via Vercel Function (proxy seguro para a API)
+    const resp = await fetch('/api/diagnostico', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
-        messages
+        sintomas: contexto,
+        foto: diagFotoBase64 ? diagFotoBase64.split(',')[1] : null
       })
     });
     const data = await resp.json();
-    const texto = data.content?.[0]?.text || 'Não foi possível obter diagnóstico.';
+    const texto = data.diagnostico || data.error || 'Não foi possível obter diagnóstico.';
 
     if(res){
       res.style.display = 'block';
@@ -3616,10 +3627,918 @@ async function atualizarSyncBar(){
   } catch(e){}
 }
 
+
+// ============================================================
+// PDF DIÁRIO — abre em janela separada
+// ============================================================
+async function gerarPDF() {
+  toast('Gerando PDF...');
+  // Coleta dados básicos
+  const hoje = dateKey();
+  const arr = await dbGetAll('arr');
+  const arrHoje = arr.filter(a => a.data === hoje);
+  const racao = arrHoje.reduce((s,a)=>s+(parseFloat(a.kg)||0),0).toFixed(1);
+  const mortes = arrHoje.reduce((s,a)=>s+(parseInt(a.mortes)||0),0);
+  const gaiolas = new Set(arrHoje.map(a=>a.cage_id)).size;
+  const pct = Math.round((gaiolas/80)*100);
+  const d = new Date();
+  const data = d.toLocaleDateString('pt-BR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  
+  const win = window.open('', '_blank');
+  if(!win){ toast('Permita popups!', true); return; }
+  
+  win.document.write(`<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Relatório — Piscicultura Santa Luzia</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Inter',sans-serif;background:#d9dcd6;color:#162e22;}
+.page{width:794px;min-height:1123px;background:#fff;margin:0 auto;padding:40px 48px;}
+.top{height:3px;background:#1E3D2F;}
+header{display:flex;justify-content:space-between;align-items:flex-end;padding:16px 0 14px;border-bottom:1px solid rgba(30,61,47,.14);}
+.logo{width:52px;height:52px;border-radius:50%;overflow:hidden;border:1.5px solid #1E3D2F;}
+.logo img{width:100%;height:100%;object-fit:cover;}
+.brand{display:flex;align-items:center;gap:12px;}
+h1{font-family:'Playfair Display',serif;font-size:24px;color:#1E3D2F;}
+.sub{font-size:10px;color:#5F7167;margin-top:4px;}
+.kicker{font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:#0E9F8E;font-weight:700;margin-bottom:2px;}
+.date{text-align:right;font-family:'Playfair Display',serif;font-size:18px;color:#1E3D2F;}
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);margin:14px 0;border-bottom:1px solid rgba(30,61,47,.14);padding-bottom:14px;}
+.metric{padding:8px 12px;border-left:1px solid rgba(30,61,47,.14);}
+.metric:first-child{border-left:none;padding-left:0;}
+.ml{font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:#5F7167;font-weight:700;}
+.mv{font-family:'Playfair Display',serif;font-size:26px;color:#1E3D2F;margin-top:4px;}
+.mv span{font-family:'Inter';font-size:12px;color:#5F7167;}
+.obs{background:#F4F0E6;border-radius:7px;padding:14px 16px;margin-top:16px;border:1px solid rgba(30,61,47,.14);}
+.obs h2{font-family:'Playfair Display',serif;font-size:14px;color:#1E3D2F;margin-bottom:6px;}
+.obs p{font-size:11px;line-height:1.6;color:#3a4a40;margin-bottom:4px;}
+footer{display:flex;justify-content:space-between;margin-top:20px;padding-top:12px;border-top:1px solid rgba(30,61,47,.14);font-size:9px;color:#5F7167;}
+@media print{body{background:#fff;}.page{margin:0;}@page{size:A4;margin:0;}}
+</style>
+</head>
+<body>
+<div class="page">
+<div class="top"></div>
+<header>
+  <div class="brand">
+    <div class="logo"><img src="${LOGO_DATA}" alt="Logo"/></div>
+    <div>
+      <div class="kicker">Relatório Diário de Produção</div>
+      <h1>Piscicultura Santa Luzia</h1>
+      <div class="sub">Sítio Santa Luzia · Carlópolis/PR · Tilápia do Nilo · 80 tanques-rede</div>
+    </div>
+  </div>
+  <div class="date">${data}</div>
+</header>
+<div class="metrics">
+  <div class="metric"><div class="ml">Ração fornecida</div><div class="mv">${racao}<span> kg</span></div></div>
+  <div class="metric"><div class="ml">Gaiolas registradas</div><div class="mv">${gaiolas}<span>/80</span></div></div>
+  <div class="metric"><div class="ml">Progresso</div><div class="mv">${pct}<span>%</span></div></div>
+  <div class="metric"><div class="ml">Mortalidade</div><div class="mv">${mortes}<span> pç</span></div></div>
+</div>
+<div class="obs">
+  <h2>Resumo do dia</h2>
+  <p>${gaiolas} de 80 gaiolas registradas (${pct}%). Ração total fornecida: ${racao}kg. Mortalidade: ${mortes} peixes.</p>
+  <p>Gerado automaticamente pelo sistema AquaLuzia com base nos registros do dia.</p>
+</div>
+<footer>
+  <span>Leticia Vale da Rosa · Gestora</span>
+  <span>Gerado em ${new Date().toLocaleString('pt-BR')} · AquaLuzia v2.0</span>
+</footer>
+</div>
+</body>
+</html>`);
+  win.document.close();
+  setTimeout(() => win.print(), 600);
+  toast('PDF gerado! ✅');
+}
+
+// ============================================================
+// MÓDULO LOTES
+// ============================================================
+async function buildLotesModulo(){
+  const lista = document.getElementById('lotes-ativos-lista');
+  const hist = document.getElementById('lotes-historico-lista');
+  if(!lista) return;
+
+  const ativos = Object.values(lotes);
+  if(!ativos.length){
+    lista.innerHTML = '<p class="muted" style="font-size:13px;">Nenhum lote ativo.</p>';
+  } else {
+    lista.innerHTML = ativos.map(l => {
+      const dias = Math.floor((Date.now()-new Date(l.data_entrada).getTime())/86400000);
+      return `<div class="acc" style="margin-bottom:8px;">
+        <div class="acc-hd">
+          <span class="num">${String(l.cage_id).padStart(3,'0')}</span>
+          <div class="ht">
+            <b>Gaiola ${String(l.cage_id).padStart(3,'0')} · ${l.fase}</b>
+            <span>${dias} dias · ${l.qtd} peixes · Entrada: ${new Date(l.data_entrada).toLocaleDateString('pt-BR')}</span>
+          </div>
+          <button onclick="abrirCadastroLote(${l.cage_id})" style="background:var(--surf);border:1px solid var(--line);color:var(--aqua);padding:5px 10px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;">Ver</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // Histórico
+  try {
+    const todos = await dbGetAll('lotes');
+    const encerrados = todos.filter(l => l.status === 'encerrado');
+    if(!encerrados.length){
+      if(hist) hist.innerHTML = '<p class="muted" style="font-size:13px;">Nenhum ciclo encerrado ainda.</p>';
+    } else {
+      if(hist) hist.innerHTML = encerrados.map(l => {
+        const dias = Math.floor((new Date(l.data_encerramento||dateKey())-new Date(l.data_entrada))/86400000);
+        return `<div class="card" style="margin-bottom:8px;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;">
+            <b>Gaiola ${String(l.cage_id).padStart(3,'0')}</b>
+            <span class="muted" style="font-size:11px;">${dias} dias de ciclo</span>
+          </div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px;">${l.fase} · ${l.qtd} peixes · ${new Date(l.data_entrada).toLocaleDateString('pt-BR')}</div>
+        </div>`;
+      }).join('');
+    }
+  } catch(e){}
+}
+
+// ============================================================
+// DESPESCA
+// ============================================================
+function carregarDadosDespesca(val){
+  const id = parseInt(val);
+  if(!id || id < 1 || id > 80) return;
+  const lote = getLote(id);
+  const resumo = document.getElementById('desp-resumo');
+  const form = document.getElementById('desp-form');
+  if(!lote){
+    if(resumo) resumo.style.display = 'none';
+    if(form) form.style.display = 'none';
+    toast('Gaiola '+String(id).padStart(3,'0')+' não tem lote ativo', true);
+    return;
+  }
+  const dias = Math.floor((Date.now()-new Date(lote.data_entrada).getTime())/86400000);
+  const setText = (elId, val) => { const el=document.getElementById(elId); if(el) el.textContent=val; };
+  setText('desp-data-entrada', new Date(lote.data_entrada).toLocaleDateString('pt-BR'));
+  setText('desp-dias', dias+' dias');
+  setText('desp-qtd-inicial', lote.qtd+' peixes');
+  setText('desp-peso-inicial', lote.peso_inicial+'g');
+  setText('desp-racao', (lote.racao_acumulada||0).toFixed(1)+' kg');
+  // Tenta pegar último peso da biometria
+  dbGetAll('bio').then(bios => {
+    const bioGaiola = bios.filter(b=>parseInt(b.gaiola)===id).sort((a,b)=>new Date(b.data)-new Date(a.data));
+    if(bioGaiola[0]) setText('desp-peso-atual', bioGaiola[0].peso+'g');
+    else setText('desp-peso-atual', '— (sem biometria)');
+    // CA estimado
+    const racao = lote.racao_acumulada||0;
+    const pesoAtual = bioGaiola[0]?.peso || lote.peso_inicial;
+    if(racao>0 && pesoAtual>lote.peso_inicial && lote.qtd>0){
+      const bioA = (pesoAtual*lote.qtd)/1000;
+      const bioI = (lote.peso_inicial*lote.qtd)/1000;
+      const ca = racao/(bioA-bioI);
+      setText('desp-ca', ca>0 ? ca.toFixed(2) : '—');
+    }
+  }).catch(()=>{});
+  if(resumo) resumo.style.display = 'block';
+  // Define data de hoje no campo
+  const dataInput = document.getElementById('desp-data');
+  if(dataInput) dataInput.value = dateKey();
+  if(form) form.style.display = 'block';
+}
+
+function calcDespesca(){
+  const pesoFinal = parseFloat(document.getElementById('desp-peso-final')?.value)||0;
+  const qtdFinal = parseInt(document.getElementById('desp-qtd-final')?.value)||0;
+  const gaiola = parseInt(document.getElementById('desp-gaiola')?.value)||0;
+  const lote = getLote(gaiola);
+  const res = document.getElementById('desp-resultado');
+  if(!pesoFinal || !qtdFinal || !lote){ if(res) res.style.display='none'; return; }
+  
+  const biomassa = (pesoFinal * qtdFinal)/1000;
+  const sobrev = ((qtdFinal/lote.qtd)*100).toFixed(1);
+  const ganhoPeixe = pesoFinal - lote.peso_inicial;
+  const racao = lote.racao_acumulada||0;
+  const bioI = (lote.peso_inicial*lote.qtd)/1000;
+  const ca = racao>0 ? (racao/(biomassa-bioI)).toFixed(2) : '—';
+
+  const setText = (id,v) => { const el=document.getElementById(id); if(el) el.textContent=v; };
+  setText('desp-r-biomassa', biomassa.toFixed(1)+' kg');
+  setText('desp-r-ca', ca+(parseFloat(ca)<1.5?' 🟢':parseFloat(ca)<2?' 🟡':' 🔴'));
+  setText('desp-r-sobrev', sobrev+'%');
+  setText('desp-r-ganho', ganhoPeixe+'g/peixe');
+  if(res) res.style.display = 'block';
+}
+
+async function confirmarDespesca(){
+  const gaiola = parseInt(document.getElementById('desp-gaiola')?.value)||0;
+  const lote = getLote(gaiola);
+  if(!lote){ toast('Selecione uma gaiola válida', true); return; }
+  const data = document.getElementById('desp-data')?.value;
+  const pesoFinal = parseFloat(document.getElementById('desp-peso-final')?.value)||0;
+  const qtdFinal = parseInt(document.getElementById('desp-qtd-final')?.value)||0;
+  if(!data||!pesoFinal||!qtdFinal){ toast('Preencha todos os campos', true); return; }
+  if(!confirm('Confirmar despesca da Gaiola '+String(gaiola).padStart(3,'0')+'?\nEsta ação encerrará o lote.')) return;
+
+  // Salva despesca
+  const rec = {
+    cage_id: gaiola, data, peso_final: pesoFinal, qtd_final: qtdFinal,
+    destino: document.getElementById('desp-destino')?.value||'',
+    resp: document.getElementById('desp-resp')?.value||'',
+    obs: document.getElementById('desp-obs')?.value||'',
+    lote_data_entrada: lote.data_entrada,
+    lote_qtd_inicial: lote.qtd,
+    lote_peso_inicial: lote.peso_inicial,
+    racao_total: lote.racao_acumulada||0,
+    biomassa: ((pesoFinal*qtdFinal)/1000).toFixed(1),
+    sobrevivencia: ((qtdFinal/lote.qtd)*100).toFixed(1)
+  };
+  await dbAdd('sync_q', {data:rec, tipo:'despesca', ts:Date.now()});
+  
+  // Encerra lote
+  lote.status = 'encerrado';
+  lote.data_encerramento = data;
+  await dbPut('lotes', lote);
+  delete lotes[gaiola];
+  if(navigator.onLine) syncQueue();
+
+  toast('Despesca registrada! 🎣✅');
+  setTimeout(()=>navTo('v-lotes-modulo'), 1500);
+}
+
+// ============================================================
+// DIAGNÓSTICO COM IA
+// ============================================================
+// CALENDÁRIO
+// ============================================================
+async function buildCalendario(){
+  const hoje = new Date();
+
+  // Biometrias pendentes (gaiolas com lote mas sem biometria nos últimos 15 dias)
+  const bioCal = document.getElementById('cal-biometrias');
+  const despCal = document.getElementById('cal-despescas');
+  const lotesCal = document.getElementById('cal-lotes');
+
+  try {
+    const todasBio = await dbGetAll('bio');
+    const pendentes = [];
+    const despescasPrev = [];
+
+    Object.values(lotes).forEach(lote => {
+      const diasCiclo = Math.floor((Date.now()-new Date(lote.data_entrada).getTime())/86400000);
+      // Última biometria desta gaiola
+      const biosGaiola = todasBio.filter(b=>parseInt(b.gaiola)===lote.cage_id).sort((a,b)=>new Date(b.data)-new Date(a.data));
+      const ultimaBio = biosGaiola[0];
+      const diasSemBio = ultimaBio ? Math.floor((Date.now()-new Date(ultimaBio.data).getTime())/86400000) : diasCiclo;
+
+      if(diasSemBio >= 15){
+        pendentes.push({
+          gaiola: lote.cage_id,
+          fase: lote.fase,
+          dias: diasSemBio,
+          urgencia: diasSemBio >= 30 ? 'r' : 'y'
+        });
+      }
+
+      // Previsão de abate (se tiver biometria com ganho diário)
+      if(ultimaBio && ultimaBio.peso && lote.peso_inicial){
+        const gpd = (ultimaBio.peso - lote.peso_inicial) / diasCiclo;
+        if(gpd > 0){
+          const diasParaAbate = Math.ceil((800 - ultimaBio.peso) / gpd);
+          if(diasParaAbate > 0 && diasParaAbate <= 60){
+            const dataAbate = new Date();
+            dataAbate.setDate(dataAbate.getDate() + diasParaAbate);
+            despescasPrev.push({
+              gaiola: lote.cage_id,
+              dias: diasParaAbate,
+              data: dataAbate.toLocaleDateString('pt-BR'),
+              peso: ultimaBio.peso
+            });
+          }
+        }
+      }
+    });
+
+    // Renderiza biometrias pendentes
+    if(bioCal){
+      if(!pendentes.length){
+        bioCal.innerHTML = '<div class="alert-card g"><div class="ai">✅</div><div><h4>Tudo em dia!</h4><p>Todas as gaiolas com biometria recente.</p></div></div>';
+      } else {
+        bioCal.innerHTML = pendentes.sort((a,b)=>b.dias-a.dias).map(p => `
+          <div class="alert-card ${p.urgencia}" style="cursor:pointer;" onclick="navTo('v-bio')">
+            <div class="ai">📊</div>
+            <div>
+              <h4>Gaiola ${String(p.gaiola).padStart(3,'0')} — ${p.fase}</h4>
+              <p>${p.dias} dias sem biometria ${p.urgencia==='r'?'⚠️ URGENTE':''}</p>
+            </div>
+          </div>`).join('');
+      }
+    }
+
+    // Renderiza despescas previstas
+    if(despCal){
+      if(!despescasPrev.length){
+        despCal.innerHTML = '<p class="muted" style="font-size:13px;">Nenhuma despesca prevista nos próximos 60 dias.</p>';
+      } else {
+        despCal.innerHTML = despescasPrev.sort((a,b)=>a.dias-b.dias).map(d => `
+          <div class="alert-card g" style="cursor:pointer;" onclick="navTo('v-despesca')">
+            <div class="ai">🎣</div>
+            <div>
+              <h4>Gaiola ${String(d.gaiola).padStart(3,'0')}</h4>
+              <p>Previsão: ${d.data} (em ${d.dias} dias) · Peso atual: ${d.peso}g</p>
+            </div>
+          </div>`).join('');
+      }
+    }
+
+    // Lotes ativos
+    if(lotesCal){
+      const ativos = Object.values(lotes);
+      if(!ativos.length){
+        lotesCal.innerHTML = '<p class="muted" style="font-size:13px;">Nenhum lote ativo.</p>';
+      } else {
+        lotesCal.innerHTML = ativos.map(l => {
+          const dias = Math.floor((Date.now()-new Date(l.data_entrada).getTime())/86400000);
+          return `<div class="kv" style="border-bottom:1px solid var(--line);padding:10px 0;">
+            <span class="k">Gaiola ${String(l.cage_id).padStart(3,'0')} · ${l.fase}</span>
+            <span class="v aq">${dias} dias</span>
+          </div>`;
+        }).join('');
+      }
+    }
+  } catch(e){ console.error('Calendário erro:', e); }
+}
+
+
+// ============================================================
+// CALCULADORA DE COMPRIMENTO
+// ============================================================
+
+function addComprimento(){
+  const inp = document.getElementById('bio-comp-inp');
+  const val = parseFloat(inp.value);
+  if(!val||val<1||val>100){ inp.style.borderColor='var(--bad)'; setTimeout(()=>inp.style.borderColor='',800); return; }
+  bioComprimentos.push(val);
+  inp.value=''; inp.focus();
+  renderComprimentos();
+  if(navigator.vibrate) navigator.vibrate(40);
+}
+
+function removeComprimento(i){ bioComprimentos.splice(i,1); renderComprimentos(); }
+
+function renderComprimentos(){
+  const wrap = document.getElementById('bio-comp-lista');
+  const count = document.getElementById('bio-comp-count');
+  const media = document.getElementById('bio-comp-media');
+  const hiddenInp = document.getElementById('bio-tam');
+  if(!wrap) return;
+  wrap.innerHTML = bioComprimentos.map((c,i)=>
+    `<span class="bio-peso-tag" onclick="removeComprimento(${i})">${c}cm <span class="x">✕</span></span>`
+  ).join('');
+  const n = bioComprimentos.length;
+  if(count) count.textContent = n+' medições';
+  if(n>0){
+    const avg = bioComprimentos.reduce((a,b)=>a+b,0)/n;
+    if(media) media.textContent = 'Média: '+avg.toFixed(1)+'cm';
+    if(hiddenInp) hiddenInp.value = avg.toFixed(1);
+  } else {
+    if(media) media.textContent = 'Média: —';
+    if(hiddenInp) hiddenInp.value = '';
+  }
+  calcBio();
+}
+
+// Enter adiciona comprimento
+document.addEventListener('keydown', e => {
+  if(e.key==='Enter'&&document.activeElement?.id==='bio-comp-inp'){ e.preventDefault(); addComprimento(); }
+});
+
+// ============================================================
+// SANIDADE PEIXE A PEIXE
+// ============================================================
+function atualizarSanidadeLista(){
+  const lista = document.getElementById('bio-sanidade-lista');
+  const resumo = document.getElementById('bio-sanidade-resumo');
+  if(!lista) return;
+  const n = bioAmostras.length;
+  if(n===0){ lista.innerHTML='<p class="muted" style="font-size:12px;">Adicione pesos na etapa anterior para registrar sanidade.</p>'; return; }
+  
+  lista.innerHTML = bioAmostras.map((peso, i) => `
+    <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);">
+      <span style="font-size:12px;font-weight:700;color:var(--muted);min-width:60px;">Peixe ${i+1} · ${peso}g</span>
+      <select id="san-${i}" style="flex:1;background:var(--bg2);border:1px solid var(--line);border-radius:8px;color:var(--cream);font-size:12px;padding:4px 8px;">
+        <option value="Normal">✅ Normal</option>
+        <option value="Lesão">⚠️ Lesão</option>
+        <option value="Parasita">⚠️ Parasita</option>
+        <option value="Coloração anormal">⚠️ Coloração</option>
+        <option value="Lesão + Parasita">🔴 Lesão+Parasita</option>
+      </select>
+    </div>`).join('');
+
+  if(resumo) resumo.textContent = n+' peixes para avaliar';
+}
+
+function getSanidadeResumo(){
+  const n = bioAmostras.length;
+  let lesoes=0, parasitas=0, normais=0;
+  for(let i=0;i<n;i++){
+    const val = document.getElementById('san-'+i)?.value||'Normal';
+    if(val==='Normal') normais++;
+    else if(val.includes('Lesão')) lesoes++;
+    else if(val.includes('Parasita')) parasitas++;
+    else lesoes++;
+  }
+  return {lesoes, parasitas, normais, total:n};
+}
+
+// ============================================================
+// COMPARATIVO TEMPERATURA AR VS ÁGUA
+// ============================================================
+function calcComparativoTemp(pid){
+  const tempAgua = parseFloat(document.getElementById(`h-p${pid}-temp`)?.value)||0;
+  const tempAr = climaAtual ? parseFloat(climaAtual.temp) : 0;
+  const comp = document.getElementById(`h-p${pid}-comp-temp`);
+  if(!comp || !tempAgua || !tempAr) return;
+  comp.style.display = 'block';
+  const diff = (tempAgua - tempAr).toFixed(1);
+  const diffEl = document.getElementById(`h-p${pid}-temp-diff`);
+  const arEl = document.getElementById(`h-p${pid}-temp-ar-val`);
+  const aguaEl = document.getElementById(`h-p${pid}-temp-agua-val`);
+  if(arEl) arEl.textContent = tempAr+'°C';
+  if(aguaEl) aguaEl.textContent = tempAgua+'°C';
+  if(diffEl){
+    const absDiff = Math.abs(parseFloat(diff));
+    diffEl.textContent = (parseFloat(diff)>0?'+':'')+diff+'°C';
+    diffEl.style.color = absDiff > 5 ? 'var(--bad)' : absDiff > 2 ? 'var(--warn)' : 'var(--ok)';
+  }
+}
+
+// ============================================================
+// FOTO NO HÍDRICO
+// ============================================================
+function handlePhotoHidrico(input, pid){
+  const file = input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const prev = document.getElementById(`h-p${pid}-photo-prev`);
+    const ph = document.getElementById(`h-p${pid}-photo-ph`);
+    if(prev){prev.src=e.target.result;prev.style.display='block';}
+    if(ph) ph.style.display='none';
+    toast('Foto do ponto '+pid+' salva! 📷');
+  };
+  reader.readAsDataURL(file);
+}
+
+// ============================================================
+// SYNC BAR — atualiza status
+// ============================================================
+async function atualizarSyncBar(){
+  if(!db || !db.objectStoreNames.contains('sync_q')) return;
+  try {
+    const queue = await dbGetAll('sync_q');
+    const bar = document.getElementById('sync-bar');
+    const status = document.getElementById('sync-bar-status');
+    if(bar){
+      if(queue.length > 0){
+        bar.style.display = 'flex';
+        if(status) status.textContent = queue.length+' registro(s) aguardando envio';
+      } else {
+        bar.style.background = 'rgba(52,211,153,.1)';
+        bar.style.borderColor = 'rgba(52,211,153,.3)';
+        bar.querySelector('div div:first-child').textContent = '✅ Tudo sincronizado!';
+        bar.querySelector('div div:last-child').textContent = 'Último sync: '+nowTime();
+        setTimeout(()=>{ bar.style.background='rgba(249,115,22,.15)'; bar.style.borderColor='var(--orange)'; }, 3000);
+      }
+    }
+  } catch(e){}
+}
+
+
+// ============================================================
+// PDF DIÁRIO — geração com dados reais
+// ============================================================
+
+// ============================================================
+// MÓDULO LOTES
+// ============================================================
+async function buildLotesModulo(){
+  const lista = document.getElementById('lotes-ativos-lista');
+  const hist = document.getElementById('lotes-historico-lista');
+  if(!lista) return;
+
+  const ativos = Object.values(lotes);
+  if(!ativos.length){
+    lista.innerHTML = '<p class="muted" style="font-size:13px;">Nenhum lote ativo.</p>';
+  } else {
+    lista.innerHTML = ativos.map(l => {
+      const dias = Math.floor((Date.now()-new Date(l.data_entrada).getTime())/86400000);
+      return `<div class="acc" style="margin-bottom:8px;">
+        <div class="acc-hd">
+          <span class="num">${String(l.cage_id).padStart(3,'0')}</span>
+          <div class="ht">
+            <b>Gaiola ${String(l.cage_id).padStart(3,'0')} · ${l.fase}</b>
+            <span>${dias} dias · ${l.qtd} peixes · Entrada: ${new Date(l.data_entrada).toLocaleDateString('pt-BR')}</span>
+          </div>
+          <button onclick="abrirCadastroLote(${l.cage_id})" style="background:var(--surf);border:1px solid var(--line);color:var(--aqua);padding:5px 10px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;">Ver</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // Histórico
+  try {
+    const todos = await dbGetAll('lotes');
+    const encerrados = todos.filter(l => l.status === 'encerrado');
+    if(!encerrados.length){
+      if(hist) hist.innerHTML = '<p class="muted" style="font-size:13px;">Nenhum ciclo encerrado ainda.</p>';
+    } else {
+      if(hist) hist.innerHTML = encerrados.map(l => {
+        const dias = Math.floor((new Date(l.data_encerramento||dateKey())-new Date(l.data_entrada))/86400000);
+        return `<div class="card" style="margin-bottom:8px;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;">
+            <b>Gaiola ${String(l.cage_id).padStart(3,'0')}</b>
+            <span class="muted" style="font-size:11px;">${dias} dias de ciclo</span>
+          </div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px;">${l.fase} · ${l.qtd} peixes · ${new Date(l.data_entrada).toLocaleDateString('pt-BR')}</div>
+        </div>`;
+      }).join('');
+    }
+  } catch(e){}
+}
+
+// ============================================================
+// DESPESCA
+// ============================================================
+function carregarDadosDespesca(val){
+  const id = parseInt(val);
+  if(!id || id < 1 || id > 80) return;
+  const lote = getLote(id);
+  const resumo = document.getElementById('desp-resumo');
+  const form = document.getElementById('desp-form');
+  if(!lote){
+    if(resumo) resumo.style.display = 'none';
+    if(form) form.style.display = 'none';
+    toast('Gaiola '+String(id).padStart(3,'0')+' não tem lote ativo', true);
+    return;
+  }
+  const dias = Math.floor((Date.now()-new Date(lote.data_entrada).getTime())/86400000);
+  const setText = (elId, val) => { const el=document.getElementById(elId); if(el) el.textContent=val; };
+  setText('desp-data-entrada', new Date(lote.data_entrada).toLocaleDateString('pt-BR'));
+  setText('desp-dias', dias+' dias');
+  setText('desp-qtd-inicial', lote.qtd+' peixes');
+  setText('desp-peso-inicial', lote.peso_inicial+'g');
+  setText('desp-racao', (lote.racao_acumulada||0).toFixed(1)+' kg');
+  // Tenta pegar último peso da biometria
+  dbGetAll('bio').then(bios => {
+    const bioGaiola = bios.filter(b=>parseInt(b.gaiola)===id).sort((a,b)=>new Date(b.data)-new Date(a.data));
+    if(bioGaiola[0]) setText('desp-peso-atual', bioGaiola[0].peso+'g');
+    else setText('desp-peso-atual', '— (sem biometria)');
+    // CA estimado
+    const racao = lote.racao_acumulada||0;
+    const pesoAtual = bioGaiola[0]?.peso || lote.peso_inicial;
+    if(racao>0 && pesoAtual>lote.peso_inicial && lote.qtd>0){
+      const bioA = (pesoAtual*lote.qtd)/1000;
+      const bioI = (lote.peso_inicial*lote.qtd)/1000;
+      const ca = racao/(bioA-bioI);
+      setText('desp-ca', ca>0 ? ca.toFixed(2) : '—');
+    }
+  }).catch(()=>{});
+  if(resumo) resumo.style.display = 'block';
+  // Define data de hoje no campo
+  const dataInput = document.getElementById('desp-data');
+  if(dataInput) dataInput.value = dateKey();
+  if(form) form.style.display = 'block';
+}
+
+function calcDespesca(){
+  const pesoFinal = parseFloat(document.getElementById('desp-peso-final')?.value)||0;
+  const qtdFinal = parseInt(document.getElementById('desp-qtd-final')?.value)||0;
+  const gaiola = parseInt(document.getElementById('desp-gaiola')?.value)||0;
+  const lote = getLote(gaiola);
+  const res = document.getElementById('desp-resultado');
+  if(!pesoFinal || !qtdFinal || !lote){ if(res) res.style.display='none'; return; }
+  
+  const biomassa = (pesoFinal * qtdFinal)/1000;
+  const sobrev = ((qtdFinal/lote.qtd)*100).toFixed(1);
+  const ganhoPeixe = pesoFinal - lote.peso_inicial;
+  const racao = lote.racao_acumulada||0;
+  const bioI = (lote.peso_inicial*lote.qtd)/1000;
+  const ca = racao>0 ? (racao/(biomassa-bioI)).toFixed(2) : '—';
+
+  const setText = (id,v) => { const el=document.getElementById(id); if(el) el.textContent=v; };
+  setText('desp-r-biomassa', biomassa.toFixed(1)+' kg');
+  setText('desp-r-ca', ca+(parseFloat(ca)<1.5?' 🟢':parseFloat(ca)<2?' 🟡':' 🔴'));
+  setText('desp-r-sobrev', sobrev+'%');
+  setText('desp-r-ganho', ganhoPeixe+'g/peixe');
+  if(res) res.style.display = 'block';
+}
+
+async function confirmarDespesca(){
+  const gaiola = parseInt(document.getElementById('desp-gaiola')?.value)||0;
+  const lote = getLote(gaiola);
+  if(!lote){ toast('Selecione uma gaiola válida', true); return; }
+  const data = document.getElementById('desp-data')?.value;
+  const pesoFinal = parseFloat(document.getElementById('desp-peso-final')?.value)||0;
+  const qtdFinal = parseInt(document.getElementById('desp-qtd-final')?.value)||0;
+  if(!data||!pesoFinal||!qtdFinal){ toast('Preencha todos os campos', true); return; }
+  if(!confirm('Confirmar despesca da Gaiola '+String(gaiola).padStart(3,'0')+'?\nEsta ação encerrará o lote.')) return;
+
+  // Salva despesca
+  const rec = {
+    cage_id: gaiola, data, peso_final: pesoFinal, qtd_final: qtdFinal,
+    destino: document.getElementById('desp-destino')?.value||'',
+    resp: document.getElementById('desp-resp')?.value||'',
+    obs: document.getElementById('desp-obs')?.value||'',
+    lote_data_entrada: lote.data_entrada,
+    lote_qtd_inicial: lote.qtd,
+    lote_peso_inicial: lote.peso_inicial,
+    racao_total: lote.racao_acumulada||0,
+    biomassa: ((pesoFinal*qtdFinal)/1000).toFixed(1),
+    sobrevivencia: ((qtdFinal/lote.qtd)*100).toFixed(1)
+  };
+  await dbAdd('sync_q', {data:rec, tipo:'despesca', ts:Date.now()});
+  
+  // Encerra lote
+  lote.status = 'encerrado';
+  lote.data_encerramento = data;
+  await dbPut('lotes', lote);
+  delete lotes[gaiola];
+  if(navigator.onLine) syncQueue();
+
+  toast('Despesca registrada! 🎣✅');
+  setTimeout(()=>navTo('v-lotes-modulo'), 1500);
+}
+
+// ============================================================
+// DIAGNÓSTICO COM IA
+// ============================================================
+// CALENDÁRIO
+// ============================================================
+async function buildCalendario(){
+  const hoje = new Date();
+
+  // Biometrias pendentes (gaiolas com lote mas sem biometria nos últimos 15 dias)
+  const bioCal = document.getElementById('cal-biometrias');
+  const despCal = document.getElementById('cal-despescas');
+  const lotesCal = document.getElementById('cal-lotes');
+
+  try {
+    const todasBio = await dbGetAll('bio');
+    const pendentes = [];
+    const despescasPrev = [];
+
+    Object.values(lotes).forEach(lote => {
+      const diasCiclo = Math.floor((Date.now()-new Date(lote.data_entrada).getTime())/86400000);
+      // Última biometria desta gaiola
+      const biosGaiola = todasBio.filter(b=>parseInt(b.gaiola)===lote.cage_id).sort((a,b)=>new Date(b.data)-new Date(a.data));
+      const ultimaBio = biosGaiola[0];
+      const diasSemBio = ultimaBio ? Math.floor((Date.now()-new Date(ultimaBio.data).getTime())/86400000) : diasCiclo;
+
+      if(diasSemBio >= 15){
+        pendentes.push({
+          gaiola: lote.cage_id,
+          fase: lote.fase,
+          dias: diasSemBio,
+          urgencia: diasSemBio >= 30 ? 'r' : 'y'
+        });
+      }
+
+      // Previsão de abate (se tiver biometria com ganho diário)
+      if(ultimaBio && ultimaBio.peso && lote.peso_inicial){
+        const gpd = (ultimaBio.peso - lote.peso_inicial) / diasCiclo;
+        if(gpd > 0){
+          const diasParaAbate = Math.ceil((800 - ultimaBio.peso) / gpd);
+          if(diasParaAbate > 0 && diasParaAbate <= 60){
+            const dataAbate = new Date();
+            dataAbate.setDate(dataAbate.getDate() + diasParaAbate);
+            despescasPrev.push({
+              gaiola: lote.cage_id,
+              dias: diasParaAbate,
+              data: dataAbate.toLocaleDateString('pt-BR'),
+              peso: ultimaBio.peso
+            });
+          }
+        }
+      }
+    });
+
+    // Renderiza biometrias pendentes
+    if(bioCal){
+      if(!pendentes.length){
+        bioCal.innerHTML = '<div class="alert-card g"><div class="ai">✅</div><div><h4>Tudo em dia!</h4><p>Todas as gaiolas com biometria recente.</p></div></div>';
+      } else {
+        bioCal.innerHTML = pendentes.sort((a,b)=>b.dias-a.dias).map(p => `
+          <div class="alert-card ${p.urgencia}" style="cursor:pointer;" onclick="navTo('v-bio')">
+            <div class="ai">📊</div>
+            <div>
+              <h4>Gaiola ${String(p.gaiola).padStart(3,'0')} — ${p.fase}</h4>
+              <p>${p.dias} dias sem biometria ${p.urgencia==='r'?'⚠️ URGENTE':''}</p>
+            </div>
+          </div>`).join('');
+      }
+    }
+
+    // Renderiza despescas previstas
+    if(despCal){
+      if(!despescasPrev.length){
+        despCal.innerHTML = '<p class="muted" style="font-size:13px;">Nenhuma despesca prevista nos próximos 60 dias.</p>';
+      } else {
+        despCal.innerHTML = despescasPrev.sort((a,b)=>a.dias-b.dias).map(d => `
+          <div class="alert-card g" style="cursor:pointer;" onclick="navTo('v-despesca')">
+            <div class="ai">🎣</div>
+            <div>
+              <h4>Gaiola ${String(d.gaiola).padStart(3,'0')}</h4>
+              <p>Previsão: ${d.data} (em ${d.dias} dias) · Peso atual: ${d.peso}g</p>
+            </div>
+          </div>`).join('');
+      }
+    }
+
+    // Lotes ativos
+    if(lotesCal){
+      const ativos = Object.values(lotes);
+      if(!ativos.length){
+        lotesCal.innerHTML = '<p class="muted" style="font-size:13px;">Nenhum lote ativo.</p>';
+      } else {
+        lotesCal.innerHTML = ativos.map(l => {
+          const dias = Math.floor((Date.now()-new Date(l.data_entrada).getTime())/86400000);
+          return `<div class="kv" style="border-bottom:1px solid var(--line);padding:10px 0;">
+            <span class="k">Gaiola ${String(l.cage_id).padStart(3,'0')} · ${l.fase}</span>
+            <span class="v aq">${dias} dias</span>
+          </div>`;
+        }).join('');
+      }
+    }
+  } catch(e){ console.error('Calendário erro:', e); }
+}
+
+
+// ============================================================
+// CALCULADORA DE COMPRIMENTO
+// ============================================================
+
+function addComprimento(){
+  const inp = document.getElementById('bio-comp-inp');
+  const val = parseFloat(inp.value);
+  if(!val||val<1||val>100){ inp.style.borderColor='var(--bad)'; setTimeout(()=>inp.style.borderColor='',800); return; }
+  bioComprimentos.push(val);
+  inp.value=''; inp.focus();
+  renderComprimentos();
+  if(navigator.vibrate) navigator.vibrate(40);
+}
+
+function removeComprimento(i){ bioComprimentos.splice(i,1); renderComprimentos(); }
+
+function renderComprimentos(){
+  const wrap = document.getElementById('bio-comp-lista');
+  const count = document.getElementById('bio-comp-count');
+  const media = document.getElementById('bio-comp-media');
+  const hiddenInp = document.getElementById('bio-tam');
+  if(!wrap) return;
+  wrap.innerHTML = bioComprimentos.map((c,i)=>
+    `<span class="bio-peso-tag" onclick="removeComprimento(${i})">${c}cm <span class="x">✕</span></span>`
+  ).join('');
+  const n = bioComprimentos.length;
+  if(count) count.textContent = n+' medições';
+  if(n>0){
+    const avg = bioComprimentos.reduce((a,b)=>a+b,0)/n;
+    if(media) media.textContent = 'Média: '+avg.toFixed(1)+'cm';
+    if(hiddenInp) hiddenInp.value = avg.toFixed(1);
+  } else {
+    if(media) media.textContent = 'Média: —';
+    if(hiddenInp) hiddenInp.value = '';
+  }
+  calcBio();
+}
+
+// Enter adiciona comprimento
+document.addEventListener('keydown', e => {
+  if(e.key==='Enter'&&document.activeElement?.id==='bio-comp-inp'){ e.preventDefault(); addComprimento(); }
+});
+
+// ============================================================
+// SANIDADE PEIXE A PEIXE
+// ============================================================
+function atualizarSanidadeLista(){
+  const lista = document.getElementById('bio-sanidade-lista');
+  const resumo = document.getElementById('bio-sanidade-resumo');
+  if(!lista) return;
+  const n = bioAmostras.length;
+  if(n===0){ lista.innerHTML='<p class="muted" style="font-size:12px;">Adicione pesos na etapa anterior para registrar sanidade.</p>'; return; }
+  
+  lista.innerHTML = bioAmostras.map((peso, i) => `
+    <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);">
+      <span style="font-size:12px;font-weight:700;color:var(--muted);min-width:60px;">Peixe ${i+1} · ${peso}g</span>
+      <select id="san-${i}" style="flex:1;background:var(--bg2);border:1px solid var(--line);border-radius:8px;color:var(--cream);font-size:12px;padding:4px 8px;">
+        <option value="Normal">✅ Normal</option>
+        <option value="Lesão">⚠️ Lesão</option>
+        <option value="Parasita">⚠️ Parasita</option>
+        <option value="Coloração anormal">⚠️ Coloração</option>
+        <option value="Lesão + Parasita">🔴 Lesão+Parasita</option>
+      </select>
+    </div>`).join('');
+
+  if(resumo) resumo.textContent = n+' peixes para avaliar';
+}
+
+function getSanidadeResumo(){
+  const n = bioAmostras.length;
+  let lesoes=0, parasitas=0, normais=0;
+  for(let i=0;i<n;i++){
+    const val = document.getElementById('san-'+i)?.value||'Normal';
+    if(val==='Normal') normais++;
+    else if(val.includes('Lesão')) lesoes++;
+    else if(val.includes('Parasita')) parasitas++;
+    else lesoes++;
+  }
+  return {lesoes, parasitas, normais, total:n};
+}
+
+// ============================================================
+// COMPARATIVO TEMPERATURA AR VS ÁGUA
+// ============================================================
+function calcComparativoTemp(pid){
+  const tempAgua = parseFloat(document.getElementById(`h-p${pid}-temp`)?.value)||0;
+  const tempAr = climaAtual ? parseFloat(climaAtual.temp) : 0;
+  const comp = document.getElementById(`h-p${pid}-comp-temp`);
+  if(!comp || !tempAgua || !tempAr) return;
+  comp.style.display = 'block';
+  const diff = (tempAgua - tempAr).toFixed(1);
+  const diffEl = document.getElementById(`h-p${pid}-temp-diff`);
+  const arEl = document.getElementById(`h-p${pid}-temp-ar-val`);
+  const aguaEl = document.getElementById(`h-p${pid}-temp-agua-val`);
+  if(arEl) arEl.textContent = tempAr+'°C';
+  if(aguaEl) aguaEl.textContent = tempAgua+'°C';
+  if(diffEl){
+    const absDiff = Math.abs(parseFloat(diff));
+    diffEl.textContent = (parseFloat(diff)>0?'+':'')+diff+'°C';
+    diffEl.style.color = absDiff > 5 ? 'var(--bad)' : absDiff > 2 ? 'var(--warn)' : 'var(--ok)';
+  }
+}
+
+// ============================================================
+// FOTO NO HÍDRICO
+// ============================================================
+function handlePhotoHidrico(input, pid){
+  const file = input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const prev = document.getElementById(`h-p${pid}-photo-prev`);
+    const ph = document.getElementById(`h-p${pid}-photo-ph`);
+    if(prev){prev.src=e.target.result;prev.style.display='block';}
+    if(ph) ph.style.display='none';
+    toast('Foto do ponto '+pid+' salva! 📷');
+  };
+  reader.readAsDataURL(file);
+}
+
+// ============================================================
+// SYNC BAR — atualiza status
+// ============================================================
+async function atualizarSyncBar(){
+  if(!db || !db.objectStoreNames.contains('sync_q')) return;
+  try {
+    const queue = await dbGetAll('sync_q');
+    const bar = document.getElementById('sync-bar');
+    const status = document.getElementById('sync-bar-status');
+    if(bar){
+      if(queue.length > 0){
+        bar.style.display = 'flex';
+        if(status) status.textContent = queue.length+' registro(s) aguardando envio';
+      } else {
+        bar.style.background = 'rgba(52,211,153,.1)';
+        bar.style.borderColor = 'rgba(52,211,153,.3)';
+        bar.querySelector('div div:first-child').textContent = '✅ Tudo sincronizado!';
+        bar.querySelector('div div:last-child').textContent = 'Último sync: '+nowTime();
+        setTimeout(()=>{ bar.style.background='rgba(249,115,22,.15)'; bar.style.borderColor='var(--orange)'; }, 3000);
+      }
+    }
+  } catch(e){}
+}
+
+
+// ============================================================
+// PDF DIÁRIO — geração com dados reais
+// ============================================================
+const LOGO_PDF = LOGO_DATA; // usa mesma logo do app
+
+const MESES_PDF = ['janeiro','fevereiro','março','abril','maio','junho',
+  'julho','agosto','setembro','outubro','novembro','dezembro'];
+const DIAS_PDF = ['domingo','segunda-feira','terça-feira','quarta-feira',
+  'quinta-feira','sexta-feira','sábado'];
+
+
 // ============================================================
 // INIT
 // ============================================================
 async function init(){
+  // Aplica logo imediatamente
+  const logoEls = document.querySelectorAll('#logo-splash,#logo-dash');
+  logoEls.forEach(el => { if(el && LOGO_DATA) el.src = LOGO_DATA; });
+  
   await initDB();
   await loadArrDia();
   await loadLotes();
