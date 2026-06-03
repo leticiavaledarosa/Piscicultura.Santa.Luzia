@@ -3348,11 +3348,22 @@ Seja objetivo e prático para um produtor rural.`;
           <div style="margin-top:12px;font-size:11px;color:var(--muted);">⚠️ Consulte sempre um médico veterinário especializado antes de tratar.</div>
         </div>`;
     }
-    // Salva no Firebase
-    if(navigator.onLine && window.fbPush){
-      window.fbPush(`${SITIO_ID}/diagnosticos`, {
-        gaiola, sintomas, diagnostico: texto, data: dateKey(), hora: nowTime()
+    // Salva no Firebase e no Sheets
+    if(navigator.onLine){
+      if(window.fbPush){
+        window.fbPush(`${SITIO_ID}/diagnosticos`, {
+          gaiola, sintomas, diagnostico: texto, data: dateKey(), hora: nowTime()
+        });
+      }
+      // Salva no Sheets
+      await dbAdd('sync_q', {
+        data: { gaiola, sintomas, diagnostico: texto, data: dateKey(), hora: nowTime(),
+          temp: document.getElementById('diag-temp')?.value||'',
+          od: document.getElementById('diag-od')?.value||'',
+          mortalidade: document.getElementById('diag-mortalidade')?.value||'' },
+        tipo: 'diagnostico', ts: Date.now()
       });
+      syncQueue();
     }
   } catch(err){
     console.error('Diagnóstico erro:', err);
